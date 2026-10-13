@@ -24,7 +24,7 @@ form.innerHTML='<label>PIN<input name="pin" type="password" inputmode="numeric" 
 document.querySelector('#cloudScreen .cloud-box').append(form);mountManagerPinKeypad(form);
 let busy=false;
 form.onsubmit=async event=>{event.preventDefault();if(busy)return;busy=true;const button=form.querySelector('button[type="submit"]');button.disabled=true;const pin=form.elements.pin.value;form.elements.pin.value='';
-try{const result=await KBRCloud.rpc('kbr_open_management',{p_pin:pin});if(result.error||!result.ok)throw Error(result.error||'Access was not approved.');location.assign(target);}
+try{const result=await KBRCloud.rpc('kbr_open_management',{p_pin:pin});if(result.error||!result.ok)throw Error(result.error||'Access was not approved.');try{sessionStorage.setItem('kbr_management_pin_handoff_v1',JSON.stringify({userId:KBRCloud.session()?.user?.id,expires:Date.now()+60000}));}catch{}location.assign(target);}
 catch(error){form.querySelector('[data-error]').textContent=error.message;button.disabled=false;busy=false;}
 };
 }};
