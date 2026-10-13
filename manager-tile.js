@@ -18,7 +18,7 @@ function mountManagerPinKeypad(form){
 (()=>{'use strict';
 window.KBRManagerTile={open(target){
 if(!KBRCloud.requireLogin())return;
-KBRSyncUI.screen('Manager PIN','Enter your owner PIN. Authorized managers use their own drink PIN.',[['Cancel',()=>KBRSyncUI.close()]]);
+KBRSyncUI.screen('Manager PIN','Owner, Manager or Assistant Manager: use your own Drink PIN.',[['Cancel',()=>KBRSyncUI.close()]]);
 const form=document.createElement('form');
 form.innerHTML='<label>PIN<input name="pin" type="password" inputmode="numeric" pattern="[0-9]{4,6}" minlength="4" maxlength="6" autocomplete="off" required></label><p data-error role="alert"></p><button type="submit">Open Manager</button>';
 document.querySelector('#cloudScreen .cloud-box').append(form);mountManagerPinKeypad(form);
