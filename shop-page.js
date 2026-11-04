@@ -9,6 +9,14 @@ document.getElementById('backToTiles').onclick=()=>{panel.hidden=true;tiles.hidd
 new MutationObserver(updateTiles).observe(document.getElementById('baristaShiftView'),{childList:true});
 async function start(){if(!KBRCloud.requireLogin())return;try{if(!['owner','operator'].includes(await KBRCloud.role()))throw Error('Staff login required.');KBRShift.setTab('shop');await KBRShift.refresh();updateTiles();status.textContent=KBRShift.snapshot().loaded?'Choose Shop or Cash Registry.':'Could not load shop status. Use the Update button or reopen this page to retry.';if(!started){started=true;
 // Returning from another app/device can change drawer cash; refresh on return.
-window.addEventListener('focus',()=>{if(!document.hidden)KBRShift.refresh();});
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)KBRShift.refresh();});}}catch(error){status.textContent=error.message;}}start();
+let lastResumeRefresh=0;
+const refreshOnReturn=()=>{
+ if(document.hidden)return;
+ const now=Date.now();
+ if(now-lastResumeRefresh<5000)return; // focus + visibilitychange usually fire together
+ lastResumeRefresh=now;
+ KBRShift.refresh().then(updateTiles);
+};
+window.addEventListener('focus',refreshOnReturn);
+document.addEventListener('visibilitychange',refreshOnReturn);}}catch(error){status.textContent=error.message;}}start();
 })();
