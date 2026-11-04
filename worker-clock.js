@@ -38,6 +38,8 @@ catch(error){status.textContent='Attendance change was not confirmed: '+error.me
 finally{busy=false;render();}}
 function signOutWorker(){if(busy)return;profile=null;sessionPin='';selected='';records=[];signature='';attendanceReady=false;render();status.textContent='Signed out. Any active shift continues until you clock out.';}
 signOut.onclick=signOutWorker;
-async function start(){if(!KBRCloud.requireLogin())return;try{if(!['owner','operator'].includes(await KBRCloud.role()))throw Error('Staff login required.');workers=await KBRCloud.rpc('kbr_clock_roster',{});render();if(!started){started=true;setInterval(()=>{if(profile&&!document.hidden&&!busy)refresh().catch(error=>status.textContent=error.message);},5000);setInterval(timer,1000);}}
+async function start(){if(!KBRCloud.requireLogin())return;try{if(!['owner','operator'].includes(await KBRCloud.role()))throw Error('Staff login required.');workers=await KBRCloud.rpc('kbr_clock_roster',{});render();if(!started){started=true;setInterval(()=>{if(profile&&!document.hidden&&!busy)refresh().catch(error=>status.textContent=error.message);},15000);
+window.addEventListener('focus',()=>{if(profile&&!document.hidden&&!busy)refresh().catch(error=>status.textContent=error.message);});
+document.addEventListener('visibilitychange',()=>{if(profile&&!document.hidden&&!busy)refresh().catch(error=>status.textContent=error.message);});setInterval(timer,1000);}}
 catch(error){host.textContent='Unable to load worker login: '+error.message;const retry=document.createElement('button');retry.textContent='Retry';retry.onclick=start;host.append(retry);}}start();
 })();
