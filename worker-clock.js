@@ -14,22 +14,32 @@ function mountWorkerLoginPin(form){
 }
 (()=>{'use strict';
 const host=document.getElementById('workerClockView'),status=document.getElementById('clockStatus'),signOut=document.getElementById('signOutBarista');
-let workers=[],records=[],selected='',profile=null,sessionPin='',busy=false,refreshing=false,signature='',started=false,attendanceReady=false;
+let workers=[],records=[],selected='',profile=null,sessionPin='',busy=false,refreshing=false,signature='',started=false,attendanceReady=false,elapsedTicker=null;
 // A selected username is not authentication. Worker login is held in memory only.
 try{localStorage.removeItem('kbr_clock_profile_v1');}catch{}
 const active=()=>profile?records.find(r=>r.barista_id===profile.id&&!r.clocked_out_at):null;
 const latestClosed=()=>records.find(r=>r.barista_id===profile?.id&&r.clocked_out_at);
 const formatTime=value=>new Date(value).toLocaleString('en-PH',{timeZone:'Asia/Manila'});
 function timer(){const el=document.getElementById('workerElapsed');if(!el||!profile)return;
-const record=active();if(record){el.textContent='Shift in progress';return;}
-const closed=latestClosed();if(!closed){el.textContent='Not clocked in';return;}
-const seconds=Math.max(0,Math.floor((Date.parse(closed.clocked_out_at)-Date.parse(closed.clocked_in_at))/1000));
+const record=active()||latestClosed();if(!record){el.textContent='Not clocked in';return;}
+const start=Date.parse(record.clocked_in_at);
+const end=record.clocked_out_at?Date.parse(record.clocked_out_at):Date.now();
+if(!Number.isFinite(start)||!Number.isFinite(end)){el.textContent='Time unavailable';return;}
+const seconds=Math.max(0,Math.floor((end-start)/1000));
 el.textContent=[Math.floor(seconds/3600),Math.floor(seconds/60)%60,seconds%60].map(n=>String(n).padStart(2,'0')).join(':');
+}
+// Only animate locally while the logged-in worker is viewing an active shift.
+// The server records timestamps on Clock In / Clock Out; ticking makes NO requests.
+function syncElapsedTicker(){
+const shouldRun=!!profile&&!!active()&&!document.hidden;
+if(!shouldRun&&elapsedTicker!==null){clearInterval(elapsedTicker);elapsedTicker=null;}
+if(shouldRun&&elapsedTicker===null){elapsedTicker=setInterval(timer,1000);}
+timer();
 }
 function render(){signOut.hidden=!profile;signOut.disabled=busy;
 if(!profile){renderLogin();return;}
 const record=active(),closed=latestClosed();host.innerHTML=`<div class="clock-panes"><section class="barista-order-card"><h2>${escapeHtml(profile.name)}</h2><p>@${escapeHtml(profile.username)}</p><p>${escapeHtml(profile.position||'Barista')}</p><p class="worker-status">${record?'Clocked in':'Logged in · not clocked in'}</p><p>${record?'Your shift continues while you are signed out of this screen.':'Press Clock In when you are ready to start working.'}</p></section><section class="barista-order-card"><p>${record?'Current shift · started '+escapeHtml(formatTime(record.clocked_in_at)):closed?'Last shift · ended '+escapeHtml(formatTime(closed.clocked_out_at)):'Ready to start your shift'}</p><h1 id="workerElapsed"></h1><button type="button" id="attendanceAction" class="${record?'clock-red':'clock-green'}" ${busy||!attendanceReady?'disabled':''}>${attendanceReady?(record?'Clock Out':'Clock In'):'Loading attendance…'}</button><p class="clock-action-message" id="attendanceMessage" role="status"></p></section></div>`;
-document.getElementById('attendanceAction').onclick=()=>changeAttendance(record?'out':'in');timer();}
+document.getElementById('attendanceAction').onclick=()=>changeAttendance(record?'out':'in');syncElapsedTicker();}
 function renderLogin(){host.innerHTML=`<form id="workerClockForm" class="clock-panes"><section class="barista-order-card"><h3>Log in</h3><label>Username<select name="username" required><option value="">Select active worker</option>${workers.map(w=>`<option value="${escapeHtml(w.username)}" ${selected===w.username?'selected':''}>${escapeHtml(w.name)}</option>`).join('')}</select></label><label>Drink PIN<input name="pin" type="password" inputmode="numeric" pattern="[0-9]{4,6}" minlength="4" maxlength="6" autocomplete="off" required></label><p data-clock-error role="alert"></p><button type="submit" class="clock-green" ${busy?'disabled':''}>Log in</button></section><section class="barista-order-card"><div class="count-keypad">${['1','2','3','4','5','6','7','8','9','Clear','0','⌫'].map(n=>`<button type="button" data-clock-key="${n}" ${busy?'disabled':''}>${n}</button>`).join('')}</div></section></form>`;
 const form=document.getElementById('workerClockForm');form.elements.username.onchange=()=>{selected=form.elements.username.value;form.elements.pin.value='';};
 for(const button of form.querySelectorAll('[data-clock-key]'))button.onclick=()=>{const input=form.elements.pin,key=button.dataset.clockKey;input.value=key==='Clear'?'':key==='⌫'?input.value.slice(0,-1):input.value.length<6?input.value+key:input.value;};
@@ -41,10 +51,12 @@ async function refresh(force=false){if(!profile||refreshing)return;refreshing=tr
 async function changeAttendance(action){if(!profile||busy||!attendanceReady)return;busy=true;render();try{const result=await KBRCloud.rpc('kbr_clock_worker',{p_username:profile.username,p_pin:sessionPin,p_action:action});if(result.error)throw Error(result.error);await refresh(true);status.textContent=action==='in'?'Clocked in. Your time has started.':'Clocked out. Your earned time is shown.';}
 catch(error){status.textContent='Attendance change was not confirmed: '+error.message+' Refresh and review your shift before retrying.';}
 finally{busy=false;render();}}
-function signOutWorker(){if(busy)return;profile=null;sessionPin='';selected='';records=[];signature='';attendanceReady=false;render();status.textContent='Signed out. Any active shift continues until you clock out.';}
+function signOutWorker(){if(busy)return;profile=null;syncElapsedTicker();sessionPin='';selected='';records=[];signature='';attendanceReady=false;render();status.textContent='Signed out. Any active shift continues until you clock out.';}
 signOut.onclick=signOutWorker;
-async function start(){if(!KBRCloud.requireLogin())return;try{if(!['owner','operator'].includes(await KBRCloud.role()))throw Error('Staff login required.');workers=await KBRCloud.rpc('kbr_clock_roster',{});render();if(!started){started=true;// Attendance is fetched once after verified login, and again after each clock action.
-// No repeated requests or live elapsed-time calculations while clocked in.
+async function start(){if(!KBRCloud.requireLogin())return;try{if(!['owner','operator'].includes(await KBRCloud.role()))throw Error('Staff login required.');workers=await KBRCloud.rpc('kbr_clock_roster',{});render();if(!started){started=true;
+ document.addEventListener('visibilitychange',syncElapsedTicker);
+ window.addEventListener('pageshow',syncElapsedTicker);
+ window.addEventListener('pagehide',()=>{if(elapsedTicker!==null){clearInterval(elapsedTicker);elapsedTicker=null;}});
 }}
 catch(error){host.textContent='Unable to load worker login: '+error.message;const retry=document.createElement('button');retry.textContent='Retry';retry.onclick=start;host.append(retry);}}start();
 })();
