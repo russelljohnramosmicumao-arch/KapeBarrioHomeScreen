@@ -2,7 +2,7 @@
 window.KBRShift=(()=>{
 let shifts=[],events=[],corrections=[],loading=false,saving=false,hasLoaded=false;let countForm=null,countKind='',denomination=1,countText='';const quantities={};const denominations=[1,5,10,20,50,100,500,1000];const queue='kbr_drawer_action_v1';const nameKey='kbr_cashier_username_'+(KBRCloud.session()?.user?.id||'staff');
 let workers=[],keyTarget='count';
-let historyLimit=3,olderHistoryAvailable=false;
+let historyLimit=0,olderHistoryAvailable=false;
 async function loadWorkers(){workers=await KBRCloud.rpc('kbr_clock_roster',{});if(!Array.isArray(workers)||!workers.length)throw Error('No active workers available.');}
 const money=n=>peso(Number(n)||0),time=t=>new Date(t).toLocaleString('en-PH',{timeZone:'Asia/Manila'});
 function active(){return shifts.find(s=>s.status==='open');}
@@ -37,7 +37,7 @@ async function refresh(prompt=false){
 async function loadOlder(){historyLimit=20;await refresh();}
 
 let drawerTab='cash',cashExpanded=false;
-function setTab(tab){drawerTab=tab;render();}
+function setTab(tab){drawerTab=tab;historyLimit=tab==='shop'?(historyLimit||3):0;render();}
 function render(){const host=document.getElementById('baristaShiftView');if(!host)return;const s=active(),pending=KBRCloud.read(queue),t=s?totals(s):null;
  host.innerHTML=drawerTab==='cash'?`<h3>Cash Registry</h3>${s?`<button style="width:100%;text-align:left" onclick="KBRShift.toggleCash()"><small>Current cash · expected</small><h2>${money(t.cash)}</h2><small>${cashExpanded?'Hide':'Show'} cash details</small></button>${cashExpanded?`<div class="history-total-strip"><div class="history-total-card">Opening cash<b>${money(s.opening_cash)}</b></div><div class="history-total-card">Cash payments<b>${money(t.cashPayments)}</b></div><div class="history-total-card">Cash in<b>${money(t.added)}</b></div><div class="history-total-card">Cash out<b>${money(t.out)}</b></div><div class="history-total-card">GCash received<b>${money(t.gcash)}</b></div></div>`:''}<div class="barista-actions"><button onclick="KBRShift.action('cash-in')">Cash In</button><button onclick="KBRShift.action('cash-out')">Cash Out</button><button onclick="KBRShift.action('handover')">Cash Handover</button></div>${eventList(s)}`:'<p>Shop is closed. Open it in the Open / End Shift tab to start the cash registry.</p>'}`:`<h3>Open / End Shift</h3>${s?`<p>Opened by ${escapeHtml(s.opened_name)} · ${time(s.opened_at)}</p><p>Opening cash ${money(s.opening_cash)} · Current cash ${money(t.cash)}</p><div class="barista-actions"><button onclick="KBRShift.action('close')">Close Shop</button><button onclick="KBRShift.correctOpening('${s.id}')">Correct Opening Count</button><button onclick="KBRShift.correct('${s.id}',null)">Void Test Shift</button></div>${auditList(s)}`:'<button onclick="KBRShift.action(\'open\')">Open Shop</button>'}<h3>Previous shop records</h3>${shifts.filter(x=>x.status!=='open').map(x=>`<details class="barista-order-card"><summary>${time(x.opened_at)} · ${escapeHtml(x.opened_name)} · ${escapeHtml(x.status)}</summary>${eventList(x)}${auditList(x)}</details>`).join('')}${olderHistoryAvailable?'<button type="button" onclick="KBRShift.loadOlder()">Load older shop records</button>':''}`;
 
