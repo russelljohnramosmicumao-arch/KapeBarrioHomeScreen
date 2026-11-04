@@ -44,6 +44,7 @@ finally{busy=false;render();}}
 function signOutWorker(){if(busy)return;profile=null;sessionPin='';selected='';records=[];signature='';attendanceReady=false;render();status.textContent='Signed out. Any active shift continues until you clock out.';}
 signOut.onclick=signOutWorker;
 async function start(){if(!KBRCloud.requireLogin())return;try{if(!['owner','operator'].includes(await KBRCloud.role()))throw Error('Staff login required.');workers=await KBRCloud.rpc('kbr_clock_roster',{});render();if(!started){started=true;// Attendance is fetched once after verified login, and again after each clock action.
-// No repeated requests or live elapsed-time calculations while clocked in.}}
+// No repeated requests or live elapsed-time calculations while clocked in.
+}}
 catch(error){host.textContent='Unable to load worker login: '+error.message;const retry=document.createElement('button');retry.textContent='Retry';retry.onclick=start;host.append(retry);}}start();
 })();
