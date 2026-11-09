@@ -7,7 +7,7 @@ function updateTiles(){
  const state=KBRShift.snapshot(),shift=state.shift,loaded=state.loaded;
  const shop=document.getElementById('shopTile');
  shop.classList.toggle('is-open',!!shift);
- document.getElementById('shopIcon').src=shift?'icons/shop-open.png':'icons/shop-closed.png';
+ const shopIcon=document.getElementById('shopIcon');const iconSrc=shift?'icons/shop-open.png':'icons/shop-closed.png';if(!shopIcon.getAttribute('src')?.endsWith(iconSrc)){shopIcon.hidden=false;shopIcon.src=iconSrc;}
  shop.querySelector('.tile-label').textContent=!loaded?'Loading shop…':shift?'Close Shop':'Open Shop';
  shop.querySelector('.tile-details').textContent=!loaded?'Loading…':shift?'Shop is currently open':'Open the shop for the next shift';
  document.getElementById('correctOpeningTile').hidden=!owner;
