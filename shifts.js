@@ -1,6 +1,6 @@
 'use strict';
 window.KBRShift=(()=>{
-let shifts=[],events=[],corrections=[],loading=false,saving=false,hasLoaded=false;let countForm=null,countKind='',denomination=1,countText='';const quantities={};const denominations=[1,5,10,20,50,100,500,1000];const queue='kbr_drawer_action_v1';const nameKey='kbr_cashier_username_'+(KBRCloud.session()?.user?.id||'staff');
+let shifts=[],events=[],corrections=[],loading=false,saving=false,hasLoaded=false;let historyLimit=0,olderHistoryAvailable=false;let countForm=null,countKind='',denomination=1,countText='';const quantities={};const denominations=[1,5,10,20,50,100,500,1000];const queue='kbr_drawer_action_v1';const nameKey='kbr_cashier_username_'+(KBRCloud.session()?.user?.id||'staff');
 let workers=[],keyTarget='count';
 let previousCoinClose=null;
 const COIN_DENOMS=[1,5,10,20];
