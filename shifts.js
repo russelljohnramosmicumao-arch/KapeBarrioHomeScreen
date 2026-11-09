@@ -45,18 +45,40 @@ async function loadOlder(){if(!ownerMode)return;historyLimit=20;await refresh();
 
 let drawerTab='cash',cashExpanded=false;
 function setTab(tab){
- const needsHistory=ownerMode&&tab==='shop'&&historyLimit===0;
+ const needsHistory=ownerMode&&tab==='history'&&historyLimit===0;
  drawerTab=tab;
- historyLimit=ownerMode&&tab==='shop'?(historyLimit||3):0;
+ historyLimit=ownerMode&&tab==='history'?(historyLimit||3):0;
  render();
- // Historical records are downloaded only when the staff opens the shop tab.
+ // Fetch older shift records only when the owner opens Previous Shop Records.
  if(needsHistory)refresh();
 }
-function render(){const host=document.getElementById('baristaShiftView');if(!host)return;const s=active(),pending=KBRCloud.read(queue),t=s?totals(s):null;
- host.innerHTML=drawerTab==='cash'?`<h3>Cash Registry</h3>${s?`<button style="width:100%;text-align:left" onclick="KBRShift.toggleCash()"><small>Current cash · expected</small><h2>${money(t.cash)}</h2><small>${cashExpanded?'Hide':'Show'} cash details</small></button>${cashExpanded?`<div class="history-total-strip"><div class="history-total-card">Opening cash<b>${money(s.opening_cash)}</b></div><div class="history-total-card">Cash payments<b>${money(t.cashPayments)}</b></div><div class="history-total-card">Cash in<b>${money(t.added)}</b></div><div class="history-total-card">Cash out<b>${money(t.out)}</b></div><div class="history-total-card">GCash received<b>${money(t.gcash)}</b></div></div>`:''}<div class="barista-actions"><button onclick="KBRShift.action('cash-in')">Cash In</button><button onclick="KBRShift.action('cash-out')">Cash Out</button><button onclick="KBRShift.action('handover')">Cash Handover</button></div>${ownerMode?eventList(s):''}`:'<p>Shop is closed. Open it in the Open / End Shift tab to start the cash registry.</p>'}`:`<h3>Open / End Shift</h3>${s?`<p>Opened by ${escapeHtml(s.opened_name)} · ${time(s.opened_at)}</p><p>Opening cash ${money(s.opening_cash)} · Current cash ${money(t.cash)}</p><div class="barista-actions"><button onclick="KBRShift.action('close')">Close Shop</button>${ownerMode?`<button onclick="KBRShift.correctOpening('${s.id}')">Correct Opening Count</button><button onclick="KBRShift.correct('${s.id}',null)">Void Test Shift</button>`:''}</div>${ownerMode?auditList(s):''}`:'<button onclick="KBRShift.action(\'open\')">Open Shop</button>'}${ownerMode?'<h3>Previous shop records</h3>':''}${ownerMode?shifts.filter(x=>x.status!=='open').map(x=>`<details class="barista-order-card"><summary>${time(x.opened_at)} · ${escapeHtml(x.opened_name)} · ${escapeHtml(x.status)}</summary>${eventList(x)}${auditList(x)}</details>`).join(''):''}${ownerMode&&olderHistoryAvailable?'<button type="button" onclick="KBRShift.loadOlder()">Load older shop records</button>':''}`;
-
+function render(){
+ const host=document.getElementById('baristaShiftView');if(!host)return;
+ const s=active(),t=s?totals(s):null;
+ if(drawerTab==='cash'){
+  host.innerHTML='<h3>Current Cash Registry</h3>'+(s
+   ?'<div class="history-total-strip">'+
+     '<div class="history-total-card"><small>Expected cash</small><b>'+money(t.cash)+'</b></div>'+
+     '<div class="history-total-card"><small>Opening cash</small><b>'+money(s.opening_cash)+'</b></div>'+
+     '<div class="history-total-card"><small>Cash payments</small><b>'+money(t.cashPayments)+'</b></div>'+
+     '<div class="history-total-card"><small>Cash in</small><b>'+money(t.added)+'</b></div>'+
+     '<div class="history-total-card"><small>Cash out</small><b>'+money(t.out)+'</b></div>'+
+     '<div class="history-total-card"><small>GCash received</small><b>'+money(t.gcash)+'</b></div></div>'
+   :'<p>Shop is closed. Use the Open / Close Shop tile to start the cash registry.');
+ }else if(drawerTab==='activity'){
+  host.innerHTML='<h3>Drawer Activities</h3>'+(s?'<p>Current shift · '+escapeHtml(s.opened_name)+' · '+time(s.opened_at)+'</p>'+eventList(s):'<p>No active drawer. Open the shop to view the current shift.</p>');
+ }else if(drawerTab==='history'){
+  host.innerHTML=ownerMode?'<h3>Previous Shop Records</h3>'+
+   (shifts.filter(x=>x.status!=='open').map(x=>'<details class="barista-order-card"><summary>'+time(x.opened_at)+' · '+escapeHtml(x.opened_name)+' · '+escapeHtml(x.status)+'</summary>'+eventList(x)+auditList(x)+'</details>').join('')||'<p>No previous records loaded.</p>')+
+   (olderHistoryAvailable?'<button type="button" onclick="KBRShift.loadOlder()">Load older shop records</button>':'')
+   :'<p>Previous shop records are available to the owner only.</p>';
+ }else{
+  host.innerHTML='<h3>Shop Status</h3>'+(s
+   ?'<p>Opened by '+escapeHtml(s.opened_name)+' · '+time(s.opened_at)+'</p><p>Opening cash '+money(s.opening_cash)+' · Current cash '+money(t.cash)+'</p>'
+   :'<p>Shop is closed.</p>');
+ }
 }
-function eventList(s){const rows=events.filter(e=>e.shift_id===s.id);return `<details><summary>Drawer activity (${rows.length})</summary>${rows.map(e=>`<p>${time(e.recorded_at)} · ${escapeHtml(e.kind)} · ${escapeHtml(e.staff_name)}${e.cashier_username?' (@'+escapeHtml(e.cashier_username)+')':''}<br>${e.kind==='payment'?`Cash ${money(e.cash)} · GCash ${money(e.gcash)}`:e.kind==='handover'||e.kind==='close'?`Counted ${money(e.counted)} · Expected ${money(e.expected)} · Difference ${money(e.variance)}`:e.kind==='opening'?`Opening ${money(e.counted)}`:money(e.cash)} · ${escapeHtml(e.note||'')}${s.status!=='voided'&&e.kind!=='payment'?`<br><button onclick="KBRShift.correct('${s.id}','${e.operation}')">Correct record</button>`:''}</p>`).join('')}</details>`;}
+function eventList(s){const rows=events.filter(e=>e.shift_id===s.id);return `<details><summary>Drawer activity (${rows.length})</summary>${rows.map(e=>`<p>${time(e.recorded_at)} · ${escapeHtml(e.kind)} · ${escapeHtml(e.staff_name)}${e.cashier_username?' (@'+escapeHtml(e.cashier_username)+')':''}<br>${e.kind==='payment'?`Cash ${money(e.cash)} · GCash ${money(e.gcash)}`:e.kind==='handover'||e.kind==='close'?`Counted ${money(e.counted)} · Expected ${money(e.expected)} · Difference ${money(e.variance)}`:e.kind==='opening'?`Opening ${money(e.counted)}`:money(e.cash)} · ${escapeHtml(e.note||'')}${ownerMode&&s.status!=='voided'&&e.kind!=='payment'?`<br><button onclick="KBRShift.correct('${s.id}','${e.operation}')">Correct record</button>`:''}</p>`).join('')}</details>`;}
 function auditList(s){const rows=corrections.filter(a=>a.shift_id===s.id);return rows.length?`<details><summary>Manager corrections (${rows.length})</summary>${rows.map(a=>{const old=a.before_record.events?.find(e=>e.operation===a.event_id),next=a.after_record.events?.find(e=>e.operation===a.event_id);return `<section class="barista-order-card"><b>${a.kind==='void'?'Test shift voided':'Corrected '+escapeHtml(old?.kind||'record')}</b><p>${time(a.approved_at)} · ${escapeHtml(a.approved_name)}${a.cashier_username?' (@'+escapeHtml(a.cashier_username)+')':''}<br>Reason: ${escapeHtml(a.reason)}</p>${old?`<p>Original: ${money(old.counted??Math.abs(Number(old.cash)))} → Corrected: ${money(next.counted??Math.abs(Number(next.cash)))}</p>`:''}</section>`;}).join('')}</details>`:'';}
 function cashierMarkup(username=''){return `<label>Username<select name="cashierUsername" required><option value="">Select active worker</option>${workers.map(w=>`<option value="${escapeHtml(w.username)}" ${username===w.username?'selected':''}>${escapeHtml(w.username)} · ${escapeHtml(w.name)}</option>`).join('')}</select></label><label>Drink PIN<input name="cashierPin" type="password" inputmode="none" pattern="[0-9]{4,6}" minlength="4" maxlength="6" autocomplete="off" readonly required onclick="KBRShift.selectPin()"><small>Tap here, then use the keypad to enter your Drink PIN.</small></label>`;}
 function bindCashier(form){form.elements.cashierUsername.onchange=()=>{form.elements.cashierPin.value='';selectPin();};form.elements.cashierPin.onfocus=selectPin;}
