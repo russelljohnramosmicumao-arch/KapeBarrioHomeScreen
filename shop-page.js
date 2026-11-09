@@ -7,7 +7,7 @@ for(const button of document.querySelectorAll('[data-shop-tab]'))button.onclick=
 document.getElementById('refreshCashRegistry').onclick=async()=>{await KBRShift.refresh();updateTiles();};
 document.getElementById('backToTiles').onclick=()=>{panel.hidden=true;tiles.hidden=false;updateTiles();};
 new MutationObserver(updateTiles).observe(document.getElementById('baristaShiftView'),{childList:true});
-async function start(){if(!KBRCloud.requireLogin())return;try{if(!['owner','operator'].includes(await KBRCloud.role()))throw Error('Staff login required.');KBRShift.setTab('cash');await KBRShift.refresh();updateTiles();status.textContent=KBRShift.snapshot().loaded?'Choose Shop or Cash Registry.':'Could not load shop status. Use the Update button or reopen this page to retry.';if(!started){started=true;
+async function start(){if(!KBRCloud.requireLogin())return;try{const role=await KBRCloud.role();if(!['owner','operator'].includes(role))throw Error('Staff login required.');KBRShift.setOwnerAccess(role==='owner');KBRShift.setTab('cash');await KBRShift.refresh();updateTiles();status.textContent=KBRShift.snapshot().loaded?'Choose Shop or Cash Registry.':'Could not load shop status. Use the Update button or reopen this page to retry.';if(!started){started=true;
 // Returning from another app/device can change drawer cash; refresh on return.
 let lastResumeRefresh=0;
 const refreshOnReturn=()=>{
