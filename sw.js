@@ -1,12 +1,12 @@
 'use strict';
-const CACHE='kbr-home-20261109-kitchen-warning-arrows-v9';
-const ASSETS=["./shifts.js?v=kitchen-warning-v6","./icons/shop-closed.png","./icons/shop-open.png","./icons/icon-192.png","./icons/icon-512.png","./manifest.json","./manager-tile.js","./page-clock.js","./","./index.html","./customer-registration.html","./clock-in.html","./open-end-shift.html","./sync-config.js","./sync-core.js","./sync-core.js?v=usage-sleep-v2","./sync-ui.js","./sync.css?v=cash-pane-v2","./worker-clock.js?v=elapsed-local-nov4-v3","./shop-page.js?v=shift-tiles-v4","./sync-login.html","./reset-password.html","./reset-password.js","./page-tools.js?v=shop-cache-recovery-20261109","./page-tools.css"];
+const CACHE='kbr-home-20261109-kitchen-cashout-v10';
+const ASSETS=["./shifts.js?v=kitchen-cashout-v7","./icons/shop-closed.png","./icons/shop-open.png","./icons/icon-192.png","./icons/icon-512.png","./manifest.json","./manager-tile.js","./page-clock.js","./","./index.html","./customer-registration.html","./clock-in.html","./open-end-shift.html","./sync-config.js","./sync-core.js","./sync-core.js?v=usage-sleep-v2","./sync-ui.js","./sync.css?v=cash-pane-v2","./worker-clock.js?v=elapsed-local-nov4-v3","./shop-page.js?v=shift-tiles-v4","./sync-login.html","./reset-password.html","./reset-password.js","./page-tools.js?v=shop-cache-recovery-20261109","./page-tools.css"];
 self.addEventListener('install',event=>{
   event.waitUntil((async()=>{
     const cache=await caches.open(CACHE);
     // A single optional image or offline resource must not abort the entire update.
     const results=await Promise.allSettled(ASSETS.map(asset=>cache.add(asset)));
-    const required=['./open-end-shift.html','./shifts.js?v=kitchen-warning-v6','./shop-page.js?v=shift-tiles-v4','./page-tools.js?v=shop-cache-recovery-20261109'];
+    const required=['./open-end-shift.html','./shifts.js?v=kitchen-cashout-v7','./shop-page.js?v=shift-tiles-v4','./page-tools.js?v=shop-cache-recovery-20261109'];
     const failed=required.filter(path=>!results[ASSETS.indexOf(path)]||results[ASSETS.indexOf(path)].status!=='fulfilled');
     if(failed.length)throw new Error('Critical shift files could not be cached: '+failed.join(', '));
     // Activate the repair without requiring a working old update button.
