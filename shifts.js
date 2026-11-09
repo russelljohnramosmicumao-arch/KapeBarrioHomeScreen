@@ -131,17 +131,12 @@ async function action(kind,kitchenConfirmed=false){try{await loadWorkers();}catc
    const total=Number(food.foodTotal),paid=Number(food.paidToKitchen),remaining=Number(food.remaining);
    if(![total,paid,remaining].every(Number.isFinite)||total<0||paid<0||remaining<0)throw Error('Invalid kitchen settlement totals. Closing is blocked.');
    if(remaining>0.005){
-    const due=remaining;
-    const rows=(Array.isArray(food.items)?food.items:[]).map(i=>String(i.name)+' · '+i.qty+' pcs — '+money(i.amount)).join('\n');
-    const message='DO NOT COUNT THE CLOSING MONEY YET.\n\n'+
-     'Pay all kitchen food FIRST. Only count the remaining drawer cash after the kitchen has been paid.\n\n'+
-     rows+'\n\nFood sold: '+money(total)+
-     '\nAlready paid: '+money(paid)+
-     '\nAMOUNT TO PAY KITCHEN: '+money(due);
-    KBRSyncUI.screen('STOP — Pay the Kitchen First',message,
-     [['Back — Do not close',()=>KBRSyncUI.close()],['Pay Kitchen & Record Cash Out',()=>cashAction('cash-out',s,due)]]);
-    const notice=document.querySelector('#cloudScreen .cloud-box>p');
-    if(notice){notice.style.whiteSpace='pre-line';notice.style.textAlign='left';notice.style.lineHeight='1.6';notice.style.fontWeight='650';}
+    const message='Pay the kitchen first before closing the shop.\n\n'+
+     'TOTAL KITCHEN FOOD TO PAY\n'+money(remaining);
+    KBRSyncUI.screen('STOP',message,
+     [['Stop and Go Back',()=>KBRSyncUI.close()],['Pay Kitchen & Record Cash Out',()=>cashAction('cash-out',s,remaining)]]);
+    const box=document.querySelector('#cloudScreen .cloud-box');
+    if(box)box.classList.add('kitchen-stop-warning');
     return;
    }
    if(!kitchenConfirmed){
