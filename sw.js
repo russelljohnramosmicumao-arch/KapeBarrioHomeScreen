@@ -1,12 +1,12 @@
 'use strict';
 const CACHE='kbr-home-20261109-shop-recovery-v2';
-const ASSETS=["./shifts.js?v=kitchen-first-v7","./icons/shop-closed.png","./icons/shop-open.png","./icons/icon-192.png","./icons/icon-512.png","./manifest.json","./manager-tile.js","./page-clock.js","./","./index.html","./customer-registration.html","./clock-in.html","./open-end-shift.html","./sync-config.js","./sync-core.js","./sync-core.js?v=usage-sleep-v2","./sync-ui.js","./sync.css?v=cash-pane-v2","./worker-clock.js?v=elapsed-local-nov4-v3","./shop-page.js?v=usage-sleep-v2","./sync-login.html","./reset-password.html","./reset-password.js","./page-tools.js","./page-tools.css"];
+const ASSETS=["./shifts.js?v=shop-cache-recovery-20261109","./icons/shop-closed.png","./icons/shop-open.png","./icons/icon-192.png","./icons/icon-512.png","./manifest.json","./manager-tile.js","./page-clock.js","./","./index.html","./customer-registration.html","./clock-in.html","./open-end-shift.html","./sync-config.js","./sync-core.js","./sync-core.js?v=usage-sleep-v2","./sync-ui.js","./sync.css?v=cash-pane-v2","./worker-clock.js?v=elapsed-local-nov4-v3","./shop-page.js?v=shop-cache-recovery-20261109","./sync-login.html","./reset-password.html","./reset-password.js","./page-tools.js?v=shop-cache-recovery-20261109","./page-tools.css"];
 self.addEventListener('install',event=>{
   event.waitUntil((async()=>{
     const cache=await caches.open(CACHE);
     // A single optional image or offline resource must not abort the entire update.
     const results=await Promise.allSettled(ASSETS.map(asset=>cache.add(asset)));
-    const required=['./open-end-shift.html','./shifts.js?v=kitchen-first-v7','./shop-page.js?v=usage-sleep-v2','./page-tools.js'];
+    const required=['./open-end-shift.html','./shifts.js?v=shop-cache-recovery-20261109','./shop-page.js?v=shop-cache-recovery-20261109','./page-tools.js?v=shop-cache-recovery-20261109'];
     const failed=required.filter(path=>!results[ASSETS.indexOf(path)]||results[ASSETS.indexOf(path)].status!=='fulfilled');
     if(failed.length)throw new Error('Critical shift files could not be cached: '+failed.join(', '));
     // Activate the repair without requiring a working old update button.
@@ -25,7 +25,7 @@ self.addEventListener('fetch',event=>{
   event.respondWith((async()=>{
     const cache=await caches.open(CACHE);
     // Fetch fresh app pages/scripts first; cached copies remain an offline fallback.
-    const freshFirst=event.request.mode==='navigate'||/\.(?:js|html)$/.test(url.pathname);
+    const freshFirst=event.request.mode==='navigate'||/\/(?:shifts|shop-page|page-tools)\.js$/.test(url.pathname);
     if(freshFirst){
       try{const response=await fetch(event.request);if(response.ok){await cache.put(event.request,response.clone());return response;}const cached=await cache.match(event.request);return cached||response;}
       catch(error){const cached=await cache.match(event.request);if(cached)return cached;throw error;}
