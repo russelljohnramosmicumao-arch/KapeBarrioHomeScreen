@@ -123,26 +123,40 @@ async function handoverAction(s){
  if(result.error||!result.complete)throw Error(result.error||'Handover is awaiting confirmation. Review it before retrying.');KBRSyncUI.close();countForm=null;countKind='';await refresh();KBRSyncUI.screen('Cash handed over','Received by '+(result.incoming_name||incoming)+'. '+(result.variance!=null&&result.counted!=null?handoverDifference(result.counted,Number(result.counted)-Number(result.variance)):'' ),[['Continue',()=>KBRSyncUI.close()]]);
  }catch(e){form.querySelector('[data-handover-error]').textContent=e.message;}finally{form.elements.cashierPin.value='';form.elements.incomingPin.value='';saving=false;form.querySelector('button[type=submit]').disabled=false;}};
 }
-async function action(kind){try{await loadWorkers();}catch(e){KBRSyncUI.screen('Could not load workers',e.message,[['Back',()=>KBRSyncUI.close()]]);return;}if(saving)return;if(KBRCloud.read(queue)){retry();return;}const s=active();if(kind==='open'&&s){KBRSyncUI.close();render();return;}if(kind!=='open'&&!s){refresh(true);return;}if(kind==='handover'){await handoverAction(s);return;}if(['cash-in','cash-out'].includes(kind)){cashAction(kind,s);return;}
+async function action(kind,kitchenConfirmed=false){try{await loadWorkers();}catch(e){KBRSyncUI.screen('Could not load workers',e.message,[['Back',()=>KBRSyncUI.close()]]);return;}if(saving)return;if(KBRCloud.read(queue)){retry();return;}const s=active();if(kind==='open'&&s){KBRSyncUI.close();render();return;}if(kind!=='open'&&!s){refresh(true);return;}if(kind==='handover'){await handoverAction(s);return;}if(['cash-in','cash-out'].includes(kind)){cashAction(kind,s);return;}
  if(kind==='close'){
   try{
    const food=await KBRCloud.rpc('kbr_kitchen_settlement_snapshot',{p_shift:s.id});
-   if(food?.remaining>0){
-    const due=Number(food.remaining);
-    const rows=(food.items||[]).map(i=>String(i.name)+' · '+i.qty+' pcs — '+money(i.amount)).join('\n');
-    const text='DO NOT COUNT THE CLOSING MONEY YET.\n\n'+
+   if(!food||typeof food!=='object'||food.error)throw Error(food?.error||'Kitchen settlement information unavailable.');
+   const total=Number(food.foodTotal),paid=Number(food.paidToKitchen),remaining=Number(food.remaining);
+   if(![total,paid,remaining].every(Number.isFinite)||total<0||paid<0||remaining<0)throw Error('Invalid kitchen settlement totals. Closing is blocked.');
+   if(remaining>0.005){
+    const due=remaining;
+    const rows=(Array.isArray(food.items)?food.items:[]).map(i=>String(i.name)+' · '+i.qty+' pcs — '+money(i.amount)).join('\n');
+    const message='DO NOT COUNT THE CLOSING MONEY YET.\n\n'+
      'Pay all kitchen food FIRST. Only count the remaining drawer cash after the kitchen has been paid.\n\n'+
-     rows+'\n\nFood sold: '+money(food.foodTotal)+
-     '\nAlready paid: '+money(food.paidToKitchen)+
-     '\n\nAMOUNT TO PAY KITCHEN: '+money(due);
-    KBRSyncUI.screen('STOP — Pay the Kitchen First',text,
+     rows+'\n\nFood sold: '+money(total)+
+     '\nAlready paid: '+money(paid)+
+     '\nAMOUNT TO PAY KITCHEN: '+money(due);
+    KBRSyncUI.screen('STOP — Pay the Kitchen First',message,
      [['Back — Do not close',()=>KBRSyncUI.close()],['Pay Kitchen & Record Cash Out',()=>cashAction('cash-out',s,due)]]);
     const notice=document.querySelector('#cloudScreen .cloud-box>p');
     if(notice){notice.style.whiteSpace='pre-line';notice.style.textAlign='left';notice.style.lineHeight='1.6';notice.style.fontWeight='650';}
     return;
    }
+   if(!kitchenConfirmed){
+    const noFood=total<0.005;
+    KBRSyncUI.screen(noFood?'No Kitchen Food':'Kitchen Payment Complete',
+     noFood?'No kitchen food was sold during this shift. You can proceed to count the closing cash.':
+      'Kitchen food sold: '+money(total)+'\nKitchen paid: '+money(paid)+'\nThere is no remaining kitchen payment. You can proceed to count the closing cash.',
+     [['Back — Do not close',()=>KBRSyncUI.close()],['Continue to Closing Count',()=>{KBRSyncUI.close();action('close',true);}]]);
+    const notice=document.querySelector('#cloudScreen .cloud-box>p');
+    if(notice)notice.style.whiteSpace='pre-line';
+    return;
+   }
   }catch(e){KBRSyncUI.screen('Unable to verify kitchen settlement','Closing is blocked until the kitchen balance can be checked: '+(e.message||e),[['Back',()=>KBRSyncUI.close()]]);return;}
  }
+
  const labels={open:'Open Shop Shift','cash-in':'Cash In — add change / money','cash-out':'Cash Out — supplies / refund',handover:'Cash Handover',close:'End Shop Shift'},count=['open','handover','close'].includes(kind),t=s?totals(s):null;
  KBRSyncUI.screen(labels[kind],count?'Count the actual cash in the drawer. The count is saved with the shift.':'Record the amount and purpose.',[['Back',()=>KBRSyncUI.close()]]);
  const form=document.createElement('form');if(count)document.querySelector('#cloudScreen .cloud-box').classList.add('drawer-count');form.innerHTML=`${cashierMarkup(localStorage.getItem(nameKey)||'')}<label>${count?'Total cash counted':'Amount'}<input name="amount" type="number" min="${count?0:0.01}" step="0.01" ${count?'readonly value="0"':''} required></label>${count?countMarkup():keypadMarkup()}${['open','close'].includes(kind)?'':`<label>${kind==='handover'?'Handover to / note':'Purpose / note'}<textarea name="note" maxlength="500" ${!count?'required minlength="3"':''}></textarea></label>`}${t&&count?`<p>Expected drawer cash: ${money(t.cash)}</p><p id="drawerVariance"></p>`:''}<button type="submit">Save ${labels[kind]}</button>`;document.querySelector('#cloudScreen .cloud-box').append(form);
