@@ -1,5 +1,5 @@
 'use strict';
-const CACHE='kbr-home-20261109-four-column-shifts-v6';
+const CACHE='kbr-home-20261109-shift-priority-v7';
 const ASSETS=["./shifts.js?v=shift-tiles-v4","./icons/shop-closed.png","./icons/shop-open.png","./icons/icon-192.png","./icons/icon-512.png","./manifest.json","./manager-tile.js","./page-clock.js","./","./index.html","./customer-registration.html","./clock-in.html","./open-end-shift.html","./sync-config.js","./sync-core.js","./sync-core.js?v=usage-sleep-v2","./sync-ui.js","./sync.css?v=cash-pane-v2","./worker-clock.js?v=elapsed-local-nov4-v3","./shop-page.js?v=shift-tiles-v4","./sync-login.html","./reset-password.html","./reset-password.js","./page-tools.js?v=shop-cache-recovery-20261109","./page-tools.css"];
 self.addEventListener('install',event=>{
   event.waitUntil((async()=>{
