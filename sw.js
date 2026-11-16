@@ -1,5 +1,5 @@
 'use strict';
-const CACHE='kbr-home-20261109-siomai-shop-icon-v11';
+const CACHE='kbr-home-20261109-siomai-shop-icon-v11-cf-v1';
 const ASSETS=["./shifts.js?v=kitchen-cashout-v7","./icons/shop-closed.png","./icons/shop-open.png","./icons/icon-192.png","./icons/icon-512.png","./manifest.json","./manager-tile.js","./page-clock.js","./","./index.html","./customer-registration.html","./clock-in.html","./open-end-shift.html","./sync-config.js","./sync-core.js","./sync-core.js?v=usage-sleep-v2","./sync-ui.js","./sync.css?v=cash-pane-v2","./worker-clock.js?v=elapsed-local-nov4-v3","./shop-page.js?v=shop-icon-v5","./sync-login.html","./reset-password.html","./reset-password.js","./page-tools.js?v=shop-cache-recovery-20261109","./page-tools.css"];
 self.addEventListener('install',event=>{
   event.waitUntil((async()=>{
@@ -22,6 +22,7 @@ self.addEventListener('activate',event=>event.waitUntil((async()=>{
 self.addEventListener('fetch',event=>{
   const url=new URL(event.request.url);
   if(event.request.method!=='GET'||url.origin!==self.location.origin||!url.href.startsWith(self.registration.scope))return;
+  if(event.request.mode==='navigate')return;
   event.respondWith((async()=>{
     const cache=await caches.open(CACHE);
     // Fetch fresh app pages/scripts first; cached copies remain an offline fallback.
