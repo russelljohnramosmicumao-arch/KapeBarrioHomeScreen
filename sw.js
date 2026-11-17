@@ -1,6 +1,6 @@
 'use strict';
-const CACHE='kbr-home-20261109-siomai-shop-icon-v11-update-guard-v3-offline-nav-v1';
-const ASSETS=["./shifts.js?v=kitchen-cashout-v7","./icons/shop-closed.png","./icons/shop-open.png","./icons/icon-192.png","./icons/icon-512.png","./manifest.json","./manager-tile.js","./page-clock.js","./","./index.html","./customer-registration.html","./clock-in.html","./open-end-shift.html","./sync-config.js","./sync-core.js","./sync-core.js?v=usage-sleep-v2","./sync-ui.js","./sync.css?v=cash-pane-v2","./worker-clock.js?v=elapsed-local-nov4-v3","./shop-page.js?v=shop-icon-v5","./sync-login.html","./reset-password.html","./reset-password.js","./page-tools.js?v=shop-cache-recovery-20261109","./page-tools.css"];
+const CACHE='kbr-home-20261109-siomai-shop-icon-v11-update-guard-v3-offline-nav-v1-ios-home-icon-v1';
+const ASSETS=["./apple-touch-icon.png","./apple-touch-icon.png?v=20261117-home","./icons/icon-192.png?v=20261117-home","./icons/icon-512.png?v=20261117-home","./shifts.js?v=kitchen-cashout-v7","./icons/shop-closed.png","./icons/shop-open.png","./icons/icon-192.png","./icons/icon-512.png","./manifest.json","./manager-tile.js","./page-clock.js","./","./index.html","./customer-registration.html","./clock-in.html","./open-end-shift.html","./sync-config.js","./sync-core.js","./sync-core.js?v=usage-sleep-v2","./sync-ui.js","./sync.css?v=cash-pane-v2","./worker-clock.js?v=elapsed-local-nov4-v3","./shop-page.js?v=shop-icon-v5","./sync-login.html","./reset-password.html","./reset-password.js","./page-tools.js?v=shop-cache-recovery-20261109","./page-tools.css"];
 self.addEventListener('install',event=>{
   event.waitUntil((async()=>{
     const cache=await caches.open(CACHE);
