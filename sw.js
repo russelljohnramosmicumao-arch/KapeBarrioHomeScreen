@@ -1,5 +1,5 @@
 'use strict';
-const CACHE='kbr-home-20261109-siomai-shop-icon-v11-update-guard-v3';
+const CACHE='kbr-home-20261109-siomai-shop-icon-v11-update-guard-v3-offline-nav-v1';
 const ASSETS=["./shifts.js?v=kitchen-cashout-v7","./icons/shop-closed.png","./icons/shop-open.png","./icons/icon-192.png","./icons/icon-512.png","./manifest.json","./manager-tile.js","./page-clock.js","./","./index.html","./customer-registration.html","./clock-in.html","./open-end-shift.html","./sync-config.js","./sync-core.js","./sync-core.js?v=usage-sleep-v2","./sync-ui.js","./sync.css?v=cash-pane-v2","./worker-clock.js?v=elapsed-local-nov4-v3","./shop-page.js?v=shop-icon-v5","./sync-login.html","./reset-password.html","./reset-password.js","./page-tools.js?v=shop-cache-recovery-20261109","./page-tools.css"];
 self.addEventListener('install',event=>{
   event.waitUntil((async()=>{
@@ -20,17 +20,23 @@ self.addEventListener('activate',event=>event.waitUntil((async()=>{
   await self.clients.claim();
 })()));
 self.addEventListener('fetch',event=>{
-  const url=new URL(event.request.url);
-  if(event.request.method!=='GET'||url.origin!==self.location.origin||!url.href.startsWith(self.registration.scope))return;
-  event.respondWith((async()=>{
-    const cache=await caches.open(CACHE);
-    // Fetch fresh app pages/scripts first; cached copies remain an offline fallback.
-    const freshFirst=event.request.mode==='navigate'||/\/(?:shifts|shop-page|page-tools)\.js$/.test(url.pathname);
-    if(freshFirst){
-      try{const response=await fetch(event.request);if(response.ok){await cache.put(event.request,response.clone());return response;}const cached=await cache.match(event.request);return cached||response;}
-      catch(error){const cached=await cache.match(event.request);if(cached)return cached;throw error;}
-    }
-    const cached=await cache.match(event.request);if(cached)return cached;
-    const response=await fetch(event.request);if(response.ok)await cache.put(event.request,response.clone());return response;
-  })());
+ const u=new URL(event.request.url),scope=new URL(self.registration.scope);
+ if(event.request.method!=='GET'||u.origin!==scope.origin||!u.pathname.startsWith(scope.pathname))return;
+ event.respondWith((async()=>{
+  const cache=await caches.open(CACHE);
+  const navigation=event.request.mode==='navigate';
+  if(navigation){
+   try{const response=await fetch(event.request,{cache:'no-store'});if(response.ok)await cache.put(event.request,response.clone());return response;}
+   catch(error){
+    const exact=await cache.match(event.request);if(exact)return exact;
+    const clean=new URL(u);clean.search='';clean.hash='';
+    const saved=await cache.match(clean.href);if(saved)return saved;
+    const alias=new URL(clean.href);if(alias.pathname.endsWith('/'))alias.pathname+='index.html';else if(!/\.[a-z0-9]+$/i.test(alias.pathname))alias.pathname+='.html';
+    const fallback=await cache.match(alias.href);if(fallback)return fallback;
+    return new Response('<!doctype html><meta name="viewport" content="width=device-width, initial-scale=1"><h2>Offline</h2><p>Open this page online once before using it offline.</p>',{status:503,headers:{'Content-Type':'text/html; charset=utf-8'}});
+   }
+  }
+  const saved=await cache.match(event.request);if(saved)return saved;
+  const response=await fetch(event.request);if(response.ok)await cache.put(event.request,response.clone());return response;
+ })());
 });
