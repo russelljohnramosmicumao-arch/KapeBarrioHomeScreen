@@ -39,7 +39,7 @@ function show(){
  $('progress').value=filtered.length?Math.round(100*count/filtered.length):0;
  const localNow=new Date().toLocaleString('sv-SE',{timeZone:'Asia/Manila'}).replace(' ','T');
  $('list').innerHTML=filtered.length?filtered.map(t=>{
- const overdue=!t.completed_at&&localNow.slice(0,10)===shopDay&&localNow.slice(11,16)>t.due_time;
+ const overdue=!t.completed_at&&(localNow.slice(0,10)>shopDay||(localNow.slice(0,10)===shopDay&&localNow.slice(11,16)>t.due_time));
  return '<div class="task '+(t.completed_at?'completed':'')+'"><div class="time '+(overdue?'late':'')+'">'+escapeHtml(t.due_time)+(overdue?'<div>Overdue</div>':'')+'</div><div><div class="task-title">'+escapeHtml(t.title)+'</div><div class="task-note">'+(t.completed_at?'✓ '+escapeHtml(t.completed_by)+' · '+escapeHtml(dateTime(t.completed_at)):'Not completed')+'</div></div><button class="check '+(t.completed_at?'done':'')+'" data-task="'+t.id+'" '+(t.completed_at||busy?'disabled':'')+'>'+(t.completed_at?'✓ Done':'Mark done')+'</button></div>';
  }).join(''):'<p class="muted">No tasks set for this shift yet.</p>';
  $('list').querySelectorAll('[data-task]').forEach(b=>b.onclick=()=>check(Number(b.dataset.task)));
