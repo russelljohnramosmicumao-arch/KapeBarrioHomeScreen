@@ -33,7 +33,7 @@ function show(){
  $('signedAs').textContent='Signed in as '+(barista?.name||'');
  for(const s of ['morning','evening']){$(s).classList.toggle('active',s===shift);$(s).setAttribute('aria-selected',s===shift);}
  $('shiftName').textContent=shift==='morning'?'Morning tasks':'Evening tasks';
- const filtered=all.filter(t=>t.shift===shift||t.shift==='both');
+ const filtered=all.filter(t=>t.active&&(t.shift===shift||t.shift==='both'));
  const count=filtered.filter(t=>t.completed_at).length;
  $('progressText').textContent=count+'/'+filtered.length+' completed';
  $('progress').value=filtered.length?Math.round(100*count/filtered.length):0;
@@ -47,7 +47,7 @@ function show(){
 async function snapshot(){const result=await KBRCloud.rpc('kbr_barista_tasks_snapshot',{});all=result.tasks||[];shopDay=result.shop_day;show();if(role==='owner')renderOwner();}
 async function check(id){if(busy||!barista||!pin)return;busy=true;say('Saving task…');show();try{const result=await KBRCloud.rpc('kbr_barista_task_check',{p_task:id,p_username:barista.username,p_pin:pin});if(result?.error)throw Error(result.error);await snapshot();say('Task completed and saved.');}catch(e){say(e.message);}finally{busy=false;show();}}
 function renderOwner(){const host=$('editors');host.innerHTML=all.map(t=>'<form class="editor" data-edit="'+t.id+'"><label>Task<input name="title" maxlength="180" required value="'+escapeHtml(t.title)+'"></label><label>Shift<select name="shift">'+['morning','evening','both'].map(s=>'<option value="'+s+'" '+(s===t.shift?'selected':'')+'>'+s+'</option>').join('')+'</select></label><label>Time<input name="time" type="time" required value="'+escapeHtml(t.due_time)+'"></label><button type="submit">Save</button><label><input name="active" type="checkbox" checked style="width:auto;min-height:0"> Active</label></form>').join('');
- for(const t of all){const form=host.querySelector('[data-edit="'+t.id+'"]');form.elements.active.checked=true;form.onsubmit=event=>saveTask(event,t.id,t.sort_order);}
+ for(const t of all){const form=host.querySelector('[data-edit="'+t.id+'"]');form.elements.active.checked=!!t.active;form.onsubmit=event=>saveTask(event,t.id,t.sort_order);}
 }
 async function saveTask(event,id,order=0){event.preventDefault();const form=event.currentTarget;if(busy)return;busy=true;say('Saving…');try{await KBRCloud.rpc('kbr_barista_task_manage',{p_id:id,p_title:form.elements.title.value,p_shift:form.elements.shift.value,p_time:form.elements.time.value,p_active:form.elements.active.checked,p_order:order});await snapshot();say('Task settings saved.');}catch(e){say(e.message);}finally{busy=false;}}
 $('addTask').onclick=()=>{const form=document.createElement('form');form.className='editor';form.innerHTML='<label>Task<input name="title" required maxlength="180" placeholder="Task description"></label><label>Shift<select name="shift"><option>morning</option><option>evening</option><option>both</option></select></label><label>Time<input name="time" type="time" value="11:00" required></label><button type="submit">Add</button><label><input name="active" type="checkbox" checked> Active</label>';$('editors').prepend(form);form.onsubmit=e=>saveTask(e,null,all.length*10+10);};
