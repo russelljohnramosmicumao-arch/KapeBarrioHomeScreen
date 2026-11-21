@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#6b4328"><title>Barista Tasks · Kape’ Bar-Rio</title>
+<link rel="stylesheet" href="page-tools.css"><link rel="stylesheet" href="sync.css">
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f7f3eb;color:#503827;font:15px system-ui,sans-serif}main{max-width:940px;margin:auto;padding:20px}header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+h1{margin:0;font-size:clamp(24px,4vw,34px)}.muted{color:#7f6b59;font-size:13px}.panel{background:white;border:1px solid #dbc8b5;border-radius:18px;padding:16px;margin-bottom:14px}
+button,input,select{font:inherit}button{border:1px solid #c9ad95;border-radius:12px;background:white;color:#503827;min-height:42px;padding:9px 14px;cursor:pointer}button:disabled{opacity:.55}button.active,button.primary{background:#653f29;color:white;border-color:#653f29}
+.tabs{display:flex;gap:8px;margin:14px 0}.tabs button{flex:1}.summary{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}progress{width:100%;height:10px;accent-color:#3d794c}
+.task{display:grid;grid-template-columns:80px 1fr auto;gap:12px;align-items:center;border-top:1px solid #e9ddd3;padding:13px 0}.task:first-child{border-top:0}.time{font-size:12px;font-weight:700}.late{color:#b32b25}.task-title{font-weight:700}.done{color:#22763f}.task-note{font-size:12px;color:#816e5b;margin-top:5px}.check{min-width:90px}.task.completed .task-title{text-decoration:line-through;opacity:.7}
+.field{display:grid;gap:6px;margin:10px 0}.field input,.field select{width:100%;border:1px solid #cbb5a1;border-radius:9px;padding:10px;min-height:42px}.actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+#message{min-height:24px;color:#8f3b23}.editor{display:grid;grid-template-columns:minmax(0,1.8fr) 1fr 1fr auto;gap:8px;align-items:end}.editor label{font-size:12px;font-weight:700}.editor input,.editor select{display:block;width:100%;margin-top:4px;border:1px solid #cbb5a1;border-radius:9px;padding:9px;min-height:42px}
+@media(max-width:600px){main{padding:12px}.task{grid-template-columns:65px 1fr;gap:8px}.task .check{grid-column:2;justify-self:start}.editor{grid-template-columns:1fr 1fr}.editor label:first-child{grid-column:span 2}}
+</style></head>
+<body><main><header><div><h1>Barista Tasks</h1><div class="muted">Shared daily checklist · Kape’ Bar-Rio</div></div></header>
+<section class="panel" id="identity"><strong>Verify your barista identity</strong><p class="muted">Use the same name and Drink PIN as Clock In / Out. Your identity is shown on every completed task.</p>
+<form id="workerForm" class="actions"><select id="worker" required aria-label="Barista"><option value="">Choose barista</option></select><input id="pin" type="password" inputmode="numeric" autocomplete="off" minlength="4" maxlength="6" pattern="[0-9]{4,6}" placeholder="Drink PIN" required style="width:125px;padding:10px;border:1px solid #cbb5a1;border-radius:9px"><button class="primary" type="submit">Verify</button></form></section>
+<section class="panel" id="board" hidden><div class="summary"><div><strong id="shopDay"></strong><div class="muted" id="signedAs"></div></div><button id="refresh" type="button">Refresh tasks</button></div>
+<div class="tabs"><button id="morning" class="active">Morning</button><button id="evening">Evening</button></div>
+<div class="summary"><strong id="shiftName">Morning tasks</strong><span id="progressText"></span></div><progress id="progress" max="100" value="0"></progress><div id="list"></div><p class="muted">Tasks are shared by everyone in this shift. Each completion records the barista and time.</p>
+<div class="actions"><button id="switchWorker">Change barista</button></div></section>
+<section class="panel" id="ownerPanel" hidden><div class="summary"><h2 style="margin:0;font-size:19px">Manage task schedule</h2><button id="addTask">+ Add task</button></div><p class="muted">Owner only. Edit times, shift, task wording and availability. Inactive tasks do not appear on barista checklists.</p><div id="editors"></div></section>
+<p id="message" role="status"></p></main>
+<script src="sync-config.js"></script><script src="sync-core.js"></script><script src="sync-ui.js"></script>
+<script>
+(()=>{'use strict';
+const $=id=>document.getElementById(id);
+let shift='morning',all=[],shopDay='',barista=null,pin='',role='',busy=false;
+const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','"':'&quot;',"'":'&#39;'}[c]));
+const say=(message='')=>$('message').textContent=message;
+function dateTime(value){return value?new Date(value).toLocaleString('en-PH',{timeZone:'Asia/Manila',hour:'numeric',minute:'2-digit'}):'';}
+function show(){
+ $('shopDay').textContent='Shop day: '+shopDay;
+ $('signedAs').textContent='Signed in as '+(barista?.name||'');
+ for(const s of ['morning','evening']){$(s).classList.toggle('active',s===shift);$(s).setAttribute('aria-selected',s===shift);}
+ $('shiftName').textContent=shift==='morning'?'Morning tasks':'Evening tasks';
+ const filtered=all.filter(t=>t.shift===shift||t.shift==='both');
+ const count=filtered.filter(t=>t.completed_at).length;
+ $('progressText').textContent=count+'/'+filtered.length+' completed';
+ $('progress').value=filtered.length?Math.round(100*count/filtered.length):0;
+ const localNow=new Date().toLocaleString('sv-SE',{timeZone:'Asia/Manila'}).replace(' ','T');
+ $('list').innerHTML=filtered.length?filtered.map(t=>{
+ const overdue=!t.completed_at&&localNow.slice(0,10)===shopDay&&localNow.slice(11,16)>t.due_time;
+ return '<div class="task '+(t.completed_at?'completed':'')+'"><div class="time '+(overdue?'late':'')+'">'+escapeHtml(t.due_time)+(overdue?'<div>Overdue</div>':'')+'</div><div><div class="task-title">'+escapeHtml(t.title)+'</div><div class="task-note">'+(t.completed_at?'✓ '+escapeHtml(t.completed_by)+' · '+escapeHtml(dateTime(t.completed_at)):'Not completed')+'</div></div><button class="check '+(t.completed_at?'done':'')+'" data-task="'+t.id+'" '+(t.completed_at||busy?'disabled':'')+'>'+(t.completed_at?'✓ Done':'Mark done')+'</button></div>';
+ }).join(''):'<p class="muted">No tasks set for this shift yet.</p>';
+ $('list').querySelectorAll('[data-task]').forEach(b=>b.onclick=()=>check(Number(b.dataset.task)));
+}
+async function snapshot(){const result=await KBRCloud.rpc('kbr_barista_tasks_snapshot',{});all=result.tasks||[];shopDay=result.shop_day;show();if(role==='owner')renderOwner();}
+async function check(id){if(busy||!barista||!pin)return;busy=true;say('Saving task…');show();try{const result=await KBRCloud.rpc('kbr_barista_task_check',{p_task:id,p_username:barista.username,p_pin:pin});if(result?.error)throw Error(result.error);await snapshot();say('Task completed and saved.');}catch(e){say(e.message);}finally{busy=false;show();}}
+function renderOwner(){const host=$('editors');host.innerHTML=all.map(t=>'<form class="editor" data-edit="'+t.id+'"><label>Task<input name="title" maxlength="180" required value="'+escapeHtml(t.title)+'"></label><label>Shift<select name="shift">'+['morning','evening','both'].map(s=>'<option value="'+s+'" '+(s===t.shift?'selected':'')+'>'+s+'</option>').join('')+'</select></label><label>Time<input name="time" type="time" required value="'+escapeHtml(t.due_time)+'"></label><button type="submit">Save</button><label><input name="active" type="checkbox" checked style="width:auto;min-height:0"> Active</label></form>').join('');
+ for(const t of all){const form=host.querySelector('[data-edit="'+t.id+'"]');form.elements.active.checked=true;form.onsubmit=event=>saveTask(event,t.id,t.sort_order);}
+}
+async function saveTask(event,id,order=0){event.preventDefault();const form=event.currentTarget;if(busy)return;busy=true;say('Saving…');try{await KBRCloud.rpc('kbr_barista_task_manage',{p_id:id,p_title:form.elements.title.value,p_shift:form.elements.shift.value,p_time:form.elements.time.value,p_active:form.elements.active.checked,p_order:order});await snapshot();say('Task settings saved.');}catch(e){say(e.message);}finally{busy=false;}}
+$('addTask').onclick=()=>{const form=document.createElement('form');form.className='editor';form.innerHTML='<label>Task<input name="title" required maxlength="180" placeholder="Task description"></label><label>Shift<select name="shift"><option>morning</option><option>evening</option><option>both</option></select></label><label>Time<input name="time" type="time" value="11:00" required></label><button type="submit">Add</button><label><input name="active" type="checkbox" checked> Active</label>';$('editors').prepend(form);form.onsubmit=e=>saveTask(e,null,all.length*10+10);};
+for(const s of ['morning','evening'])$(s).onclick=()=>{shift=s;show();};
+$('refresh').onclick=async()=>{try{await snapshot();say('Tasks refreshed.');}catch(e){say(e.message);}};
+$('switchWorker').onclick=()=>{barista=null;pin='';$('pin').value='';$('board').hidden=true;$('identity').hidden=false;say('');};
+$('workerForm').onsubmit=async event=>{event.preventDefault();if(busy)return;busy=true;say('Verifying…');try{const username=$('worker').value;const secret=$('pin').value;const response=await KBRCloud.rpc('kbr_login_worker',{p_username:username,p_pin:secret});if(response.error)throw Error(response.error);barista=response.profile;pin=secret;$('pin').value='';$('identity').hidden=true;$('board').hidden=false;await snapshot();say('');}catch(e){barista=null;pin='';say(e.message);}finally{busy=false;}};
+async function init(){if(!KBRCloud.requireLogin())return;try{role=await KBRCloud.role();const roster=await KBRCloud.rpc('kbr_clock_roster',{});for(const e of roster||[]){const opt=document.createElement('option');opt.value=e.username;opt.textContent=e.name;$('worker').append(opt);}if(role==='owner'){$('ownerPanel').hidden=false;await snapshot();}say('');}catch(e){say(e.message);}}
+init();
+})();
+</script><script src="page-tools.js"></script></body></html>
