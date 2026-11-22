@@ -11,6 +11,7 @@ function countedBills(){return [50,100,500,1000].reduce((sum,n)=>sum+n*(Number(q
 async function loadWorkers(){workers=await KBRCloud.rpc('kbr_clock_roster',{});if(!Array.isArray(workers)||!workers.length)throw Error('No active workers available.');}
 const money=n=>peso(Number(n)||0),time=t=>new Date(t).toLocaleString('en-PH',{timeZone:'Asia/Manila'});
 function active(){return shifts.find(s=>s.status==='open');}
+function weekendShop(s){if(!s?.opened_at)return false;const day=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Manila',weekday:'short'}).format(new Date(s.opened_at));return day==='Sat'||day==='Sun';}
 function cashDraftKey(kind,shift,period=''){return 'kbr_cash_count_draft_v1:'+ (KBRCloud.session()?.user?.id||'staff')+':'+kind+':'+(shift||'opening')+':'+period;}
 function restoreCashDraft(form,key){form.dataset.cashDraftKey=key;let saved;try{saved=JSON.parse(localStorage.getItem(key)||'null');}catch{};const valid=saved&&Date.now()-saved.savedAt<12*60*60*1000;for(const n of denominations)quantities[n]=valid&&Number.isInteger(saved.quantities?.[n])&&saved.quantities[n]>=0&&saved.quantities[n]<=1000000?saved.quantities[n]:0;denomination=1;countText='';keyTarget='count';if(valid){const p=document.createElement('p');p.textContent='Previous cash count restored. Recount if cash has changed.';const reset=document.createElement('button');reset.type='button';reset.textContent='Reset count';reset.onclick=()=>{if(!confirm('Clear all counted denominations?'))return;for(const n of denominations)quantities[n]=0;countText='';persistCashDraft();updateCount();p.remove();reset.remove();};form.prepend(p,reset);} }
 function persistCashDraft(){const key=countForm?.dataset.cashDraftKey;if(key)try{localStorage.setItem(key,JSON.stringify({savedAt:Date.now(),quantities:{...quantities}}));}catch{}}
@@ -71,7 +72,7 @@ function render(){
      '<div class="history-total-card"><small>GCash received</small><b>'+money(t.gcash)+'</b></div></div>'
    :'<p>Shop is closed. Use the Open / Close Shop tile to start the cash registry.');
  }else if(drawerTab==='activity'){
-  host.innerHTML='<h3>Drawer Activities</h3>'+(s?'<p>Current shift · '+escapeHtml(s.opened_name)+' · '+time(s.opened_at)+'</p><button id="handoverFromActivity" type="button" onclick="KBRShift.action(\'handover\')">Cash Handover</button>'+eventList(s):'<p>No active drawer. Open the shop to view the current shift.</p>');
+  host.innerHTML='<h3>Drawer Activities</h3>'+(s?'<p>Current shift · '+escapeHtml(s.opened_name)+' · '+time(s.opened_at)+'</p>'+(weekendShop(s)?'':'<button id="handoverFromActivity" type="button" onclick="KBRShift.action(\'handover\')">Cash Handover</button>')+eventList(s):'<p>No active drawer. Open the shop to view the current shift.</p>');
  }else if(drawerTab==='cash-history'){
   const rows=events.filter(e=>(e.kind==='cash-in'||e.kind==='cash-out')&&(ownerMode||s&&e.shift_id===s.id)).sort((a,b)=>new Date(b.recorded_at)-new Date(a.recorded_at));
   host.innerHTML='<h3>Cash In / Cash Out History</h3>'+(rows.length?rows.map(e=>'<section class="barista-order-card"><b style="color:'+(e.kind==='cash-in'?'#287441':'#a63b39')+'">'+(e.kind==='cash-in'?'Cash In':'Cash Out')+' · '+money(Math.abs(Number(e.cash)||0))+'</b><p>'+time(e.recorded_at)+' · '+escapeHtml(e.staff_name||e.cashier_username||'Staff')+'</p>'+(e.note?'<p>'+escapeHtml(e.note)+'</p>':'')+'</section>').join(''):'<p>No Cash In / Cash Out transactions recorded in the available shifts.</p>')+(ownerMode&&olderHistoryAvailable?'<button type="button" onclick="KBRShift.loadOlder()">Load older cash records</button>':'');
@@ -131,7 +132,7 @@ async function handoverAction(s){
  if(result.error||!result.complete)throw Error(result.error||'Handover is awaiting confirmation. Review it before retrying.');clearCashDraft(form.dataset.cashDraftKey);KBRSyncUI.close();countForm=null;countKind='';await refresh();KBRSyncUI.screen('Cash handed over','Received by '+(result.incoming_name||incoming)+'. '+(result.variance!=null&&result.counted!=null?handoverDifference(result.counted,Number(result.counted)-Number(result.variance)):'' ),[['Continue',()=>KBRSyncUI.close()]]);
  }catch(e){form.querySelector('[data-handover-error]').textContent=e.message;}finally{form.elements.cashierPin.value='';form.elements.incomingPin.value='';saving=false;form.querySelector('button[type=submit]').disabled=false;}};
 }
-async function action(kind,kitchenConfirmed=false,tasksConfirmed=false){try{await loadWorkers();}catch(e){KBRSyncUI.screen('Could not load workers',e.message,[['Back',()=>KBRSyncUI.close()]]);return;}if(saving)return;if(KBRCloud.read(queue)){retry();return;}const s=active();if(kind==='open'&&s){KBRSyncUI.close();render();return;}if(kind!=='open'&&!s){refresh(true);return;}if(kind==='handover'){await handoverAction(s);return;}if(['cash-in','cash-out'].includes(kind)){cashAction(kind,s);return;}
+async function action(kind,kitchenConfirmed=false,tasksConfirmed=false){try{await loadWorkers();}catch(e){KBRSyncUI.screen('Could not load workers',e.message,[['Back',()=>KBRSyncUI.close()]]);return;}if(saving)return;if(KBRCloud.read(queue)){retry();return;}const s=active();if(kind==='open'&&s){KBRSyncUI.close();render();return;}if(kind!=='open'&&!s){refresh(true);return;}if(kind==='handover'){if(weekendShop(s)){KBRSyncUI.screen('Weekend — No Cash Handover','Cash handover is not used on Saturday or Sunday. The same cashier remains responsible for the drawer until closing.',[['Back',()=>KBRSyncUI.close()]]);return;}await handoverAction(s);return;}if(['cash-in','cash-out'].includes(kind)){cashAction(kind,s);return;}
  if(kind==='close'){
   try{
    const food=await KBRCloud.rpc('kbr_kitchen_settlement_snapshot',{p_shift:s.id});
@@ -168,10 +169,10 @@ async function action(kind,kitchenConfirmed=false,tasksConfirmed=false){try{awai
     const snapshot=await KBRCloud.rpc('kbr_barista_tasks_snapshot',{});
     if(!snapshot||!Array.isArray(snapshot.tasks)||!snapshot.shop_open||snapshot.shift_id!==s.id)
       throw Error('Task checklist could not be verified for this shop shift.');
-    const remaining=snapshot.tasks.filter(t=>t.active&&(t.shift==='evening'||t.shift==='both')&&!t.completed_at);
+    const remaining=snapshot.tasks.filter(t=>t.active&&(snapshot.is_weekend||t.shift==='evening'||t.shift==='both')&&!t.completed_at);
     if(remaining.length){
      KBRSyncUI.screen('STOP — Check Barista Tasks',
-       'Have you checked your Evening Tasks?\\n\\n'+remaining.length+' task'+(remaining.length===1?' is':'s are')+' still unfinished.\\nPlease review them before closing the shop.',
+       'Have you checked your '+(snapshot.is_weekend?'Weekend':'Evening')+' Tasks?\\n\\n'+remaining.length+' task'+(remaining.length===1?' is':'s are')+' still unfinished.\\nPlease review them before closing the shop.',
        [['Check the Tasks',()=>{KBRSyncUI.close();location.assign(new URL('barista-tasks.html',location.href).href);}],
         ['Proceed to Close Shop',()=>{KBRSyncUI.close();action('close',true,true);}]]
      );
