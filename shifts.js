@@ -50,9 +50,9 @@ async function loadOlder(){if(!ownerMode)return;historyLimit=20;await refresh();
 
 let drawerTab='cash',cashExpanded=false;
 function setTab(tab){
- const needsHistory=ownerMode&&tab==='history'&&historyLimit===0;
+ const needsHistory=ownerMode&&(tab==='history'||tab==='cash-history')&&historyLimit===0;
  drawerTab=tab;
- historyLimit=ownerMode&&tab==='history'?(historyLimit||3):0;
+ historyLimit=ownerMode&&(tab==='history'||tab==='cash-history')?(historyLimit||3):0;
  render();
  // Fetch older shift records only when the owner opens Previous Shop Records.
  if(needsHistory)refresh();
@@ -71,7 +71,10 @@ function render(){
      '<div class="history-total-card"><small>GCash received</small><b>'+money(t.gcash)+'</b></div></div>'
    :'<p>Shop is closed. Use the Open / Close Shop tile to start the cash registry.');
  }else if(drawerTab==='activity'){
-  host.innerHTML='<h3>Drawer Activities</h3>'+(s?'<p>Current shift · '+escapeHtml(s.opened_name)+' · '+time(s.opened_at)+'</p>'+eventList(s):'<p>No active drawer. Open the shop to view the current shift.</p>');
+  host.innerHTML='<h3>Drawer Activities</h3>'+(s?'<p>Current shift · '+escapeHtml(s.opened_name)+' · '+time(s.opened_at)+'</p><button id="handoverFromActivity" type="button" onclick="KBRShift.action(\'handover\')">Cash Handover</button>'+eventList(s):'<p>No active drawer. Open the shop to view the current shift.</p>');
+ }else if(drawerTab==='cash-history'){
+  const rows=events.filter(e=>(e.kind==='cash-in'||e.kind==='cash-out')&&(ownerMode||s&&e.shift_id===s.id)).sort((a,b)=>new Date(b.recorded_at)-new Date(a.recorded_at));
+  host.innerHTML='<h3>Cash In / Cash Out History</h3>'+(rows.length?rows.map(e=>'<section class="barista-order-card"><b style="color:'+(e.kind==='cash-in'?'#287441':'#a63b39')+'">'+(e.kind==='cash-in'?'Cash In':'Cash Out')+' · '+money(Math.abs(Number(e.cash)||0))+'</b><p>'+time(e.recorded_at)+' · '+escapeHtml(e.staff_name||e.cashier_username||'Staff')+'</p>'+(e.note?'<p>'+escapeHtml(e.note)+'</p>':'')+'</section>').join(''):'<p>No Cash In / Cash Out transactions recorded in the available shifts.</p>')+(ownerMode&&olderHistoryAvailable?'<button type="button" onclick="KBRShift.loadOlder()">Load older cash records</button>':'');
  }else if(drawerTab==='history'){
   host.innerHTML=ownerMode?'<h3>Previous Shop Records</h3>'+
    (shifts.filter(x=>x.status!=='open').map(x=>'<details class="barista-order-card"><summary>'+time(x.opened_at)+' · '+escapeHtml(x.opened_name)+' · '+escapeHtml(x.status)+'</summary>'+eventList(x)+auditList(x)+'</details>').join('')||'<p>No previous records loaded.</p>')+
