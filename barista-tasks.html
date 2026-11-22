@@ -7,7 +7,7 @@ h1{margin:0;font-size:clamp(24px,4vw,34px)}.muted{color:#7f6b59;font-size:13px}.
 button,input,select{font:inherit}button{border:1px solid #c9ad95;border-radius:12px;background:white;color:#503827;min-height:42px;padding:9px 14px;cursor:pointer}button:disabled{opacity:.55}button.active,button.primary{background:#653f29;color:white;border-color:#653f29}
 .tabs{display:flex;gap:8px;margin:14px 0}.tabs button{flex:1}.summary{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}progress{width:100%;height:10px;accent-color:#3d794c}
 .task{display:grid;grid-template-columns:76px minmax(0,1fr) 104px;gap:12px;align-items:center;border-top:1px solid #e9ddd3;padding:13px 0}.task:first-child{border-top:0}.time{font-size:12px;font-weight:700;text-align:right;overflow-wrap:anywhere}.late{color:#b32b25}.task-title{font-weight:700}.done{color:#22763f}.task-note{font-size:12px;color:#816e5b;margin-top:5px}.check{min-width:0;width:66px;padding:9px 6px;font-weight:750;background:#376747;color:white;border-color:#376747}.check.done{background:#e7efe5;color:#376747;border-color:#b8d4bc}.task.completed .task-title{text-decoration:line-through;opacity:.7}
-.completed-group{background:#f0f5ed;border-color:#b8d4bc}.completed-group .task{opacity:.75}.task-group{margin-top:18px;border:1px solid #e8d9ca;border-radius:14px;padding:12px;background:#fffdf9}.group-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;padding-bottom:8px;color:#503827}.group-heading strong{font-size:17px}.group-heading span{font-size:12px;font-weight:700;background:#f0e3d5;border-radius:15px;padding:4px 8px}.group-note{margin:0 0 10px}.owner-task{margin:8px 0;border:1px solid #e7d9cc;border-radius:11px;padding:10px}.owner-task summary{cursor:pointer;font-weight:650}.owner-task summary small{font-weight:400;color:#806e60}.owner-task .editor{margin-top:12px}.field{display:grid;gap:6px;margin:10px 0}.field input,.field select{width:100%;border:1px solid #cbb5a1;border-radius:9px;padding:10px;min-height:42px}.actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.completed-group{background:#f0f5ed;border-color:#b8d4bc}.completed-group .task{opacity:.75}.shop-closed .check{opacity:.5}.task-group{margin-top:18px;border:1px solid #e8d9ca;border-radius:14px;padding:12px;background:#fffdf9}.group-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;padding-bottom:8px;color:#503827}.group-heading strong{font-size:17px}.group-heading span{font-size:12px;font-weight:700;background:#f0e3d5;border-radius:15px;padding:4px 8px}.group-note{margin:0 0 10px}.owner-task{margin:8px 0;border:1px solid #e7d9cc;border-radius:11px;padding:10px}.owner-task summary{cursor:pointer;font-weight:650}.owner-task summary small{font-weight:400;color:#806e60}.owner-task .editor{margin-top:12px}.field{display:grid;gap:6px;margin:10px 0}.field input,.field select{width:100%;border:1px solid #cbb5a1;border-radius:9px;padding:10px;min-height:42px}.actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 #message{min-height:24px;color:#8f3b23}.editor{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;align-items:end}.editor .active-switch{display:flex;gap:6px;align-items:center}.editor button{justify-self:start}.editor label{font-size:12px;font-weight:700}.editor input,.editor select{display:block;width:100%;margin-top:4px;border:1px solid #cbb5a1;border-radius:9px;padding:9px;min-height:42px}
 @media(max-width:600px){main{padding:12px}.task{grid-template-columns:62px minmax(0,1fr) 72px;gap:8px}.task .check{width:57px;padding:9px 2px}.time{font-size:10px}.editor{grid-template-columns:1fr 1fr}.editor label:first-child{grid-column:span 2}}
 .worker-choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:8px}.inline-worker-picker{background:white;border:1px solid #dbc8b5;border-radius:16px;padding:18px;margin:12px 0}.tabs button{display:flex;align-items:center;justify-content:center;gap:7px}.task .task-title{overflow-wrap:anywhere}
@@ -43,20 +43,21 @@ body:not(.evening-mode) .tabs #evening{background:#111;color:#fff;border-color:#
 <script>
 (()=>{'use strict';
 const $=id=>document.getElementById(id);
-let shift='morning',all=[],shopDay='',role='',busy=false,workerId=new URLSearchParams(location.search).get('worker')||'',workerName='';
+let shift='morning',all=[],shopDay='',role='',busy=false,shopOpen=false,workerId=new URLSearchParams(location.search).get('worker')||'',workerName='';
 const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','"':'&quot;',"'":'&#39;'}[c]));
 const say=(message='')=>$('message').textContent=message;
 function dateTime(value){return value?new Date(value).toLocaleString('en-PH',{timeZone:'Asia/Manila',hour:'numeric',minute:'2-digit'}):'';}
 function show(){
  document.body.classList.toggle('evening-mode',shift==='evening');
- $('shopDay').textContent='Shop day: '+shopDay;
- $('selectedWorker').textContent=workerName?'On duty: '+workerName:'Choose the barista on duty';
+ $('shopDay').textContent=shopOpen?'Shop day: '+shopDay:'Shop closed · checklist will reset on next opening';
+ $('selectedWorker').textContent=workerName?'On duty: '+workerName:'Choose a clocked-in barista';
  for(const s of ['morning','evening']){$(s).classList.toggle('active',s===shift);$(s).setAttribute('aria-selected',s===shift);}
  $('shiftName').textContent=shift==='morning'?'Morning tasks':'Evening tasks';
  const filtered=all.filter(t=>t.active&&(t.shift===shift||t.shift==='both'));
  const count=filtered.filter(t=>t.completed_at).length;
  $('progressText').textContent=count+'/'+filtered.length+' completed';
  $('progress').value=filtered.length?Math.round(100*count/filtered.length):0;
+ $('board').classList.toggle('shop-closed',!shopOpen);
  const localNow=new Date().toLocaleString('sv-SE',{timeZone:'Asia/Manila'}).replace(' ','T');
  const labels={inside:'Inside Shop',dining:'Dining Area',afternoon:'Dining Area · 3:00–5:00 PM',handover:'Cash Handover · 5:30 PM',general:'General Tasks'};
  const groups=shift==='morning'?['inside','dining','afternoon','handover','general']:['general','inside','dining','afternoon','handover'];
@@ -66,7 +67,7 @@ function show(){
    const deadline=t.due_end||t.due_time;
    const overdue=!t.completed_at&&!!deadline&&(localNow.slice(0,10)>shopDay||(localNow.slice(0,10)===shopDay&&localNow.slice(11,16)>deadline));
    const time=t.due_time?(t.due_end?t.due_time+'–'+t.due_end:t.due_time):'Anytime';
-   return '<div class="task '+(t.completed_at?'completed':'')+'"><button class="check '+(t.completed_at?'done':'')+'" data-task="'+t.id+'" '+(t.completed_at||busy?'disabled':'')+'>'+(t.completed_at?'✓':'Done')+'</button><div><div class="task-title">'+escapeHtml(t.title)+'</div><div class="task-note">'+(t.completed_at?'✓ '+escapeHtml(t.completed_by||'Completed')+' · '+escapeHtml(dateTime(t.completed_at)):'Not completed')+'</div></div><div class="time '+(overdue?'late':'')+'">'+escapeHtml(time)+(overdue?'<div>Overdue</div>':'')+'</div></div>'; 
+   return '<div class="task '+(t.completed_at?'completed':'')+'"><button class="check '+(t.completed_at?'done':'')+'" data-task="'+t.id+'" '+(t.completed_at||busy||!shopOpen?'disabled':'')+'>'+(t.completed_at?'✓':'Done')+'</button><div><div class="task-title">'+escapeHtml(t.title)+'</div><div class="task-note">'+(t.completed_at?'✓ '+escapeHtml(t.completed_by||'Completed')+' · '+escapeHtml(dateTime(t.completed_at)):(!shopOpen?'Shop is closed':'Not completed'))+'</div></div><div class="time '+(overdue?'late':'')+'">'+escapeHtml(time)+(overdue?'<div>Overdue</div>':'')+'</div></div>'; 
  };
  for(const group of groups){
    const tasks=ordered(filtered.filter(t=>(t.section||'general')===group&&!t.completed_at));
@@ -84,7 +85,7 @@ function show(){
  $('list').innerHTML=pieces.length?pieces.join(''):'<p class="muted">No tasks set for this shift yet.</p>';
  $('list').querySelectorAll('[data-task]').forEach(b=>b.onclick=()=>check(Number(b.dataset.task)));
 }
-async function snapshot(){const result=await KBRCloud.rpc('kbr_barista_tasks_snapshot',{});all=result.tasks||[];shopDay=result.shop_day;show();if(role==='owner')renderOwner();}
+async function snapshot(){const result=await KBRCloud.rpc('kbr_barista_tasks_snapshot',{});all=result.tasks||[];shopDay=result.shop_day;shopOpen=!!result.shop_open;show();if(role==='owner')renderOwner();}
 async function check(id){if(busy)return;busy=true;say('Saving task…');show();try{if(!workerId)throw Error('Please choose the barista on duty first.');const result=await KBRCloud.rpc('kbr_barista_task_check_selected',{p_task:id,p_worker:workerId});if(result?.error)throw Error(result.error);await snapshot();say('Task completed and saved.');}catch(e){say(e.message);}finally{busy=false;show();}}
 function renderOwner(){
  const host=$('editors');
@@ -118,7 +119,7 @@ $('addTask').onclick=()=>{
 };
 for(const s of ['morning','evening'])$(s).onclick=()=>{shift=s;show();};
 $('refresh').onclick=async()=>{try{await snapshot();say('Tasks refreshed.');}catch(e){say(e.message);}};
-async function init(){if(!KBRCloud.requireLogin())return;try{role=await KBRCloud.role();if(role!=='owner'&&role!=='operator')throw Error('Staff login required.');const roster=await KBRCloud.rpc('kbr_clock_roster',{});const worker=(roster||[]).find(w=>w.id===workerId);if(worker){workerName=worker.name;}else if(roster?.length){workerId='';workerName='';const picker=document.createElement('div');picker.className='inline-worker-picker';picker.innerHTML='<h2>Who is on duty?</h2><p>Select a barista before marking tasks.</p>';const choices=document.createElement('div');choices.className='worker-choices';for(const w of roster){const b=document.createElement('button');b.textContent=w.name;b.onclick=()=>{const url=new URL(location.href);url.searchParams.set('worker',w.id);location.assign(url.href);};choices.append(b);}picker.append(choices);$('board').before(picker);$('board').hidden=true;}else throw Error('No active baristas available.');if(worker)$('board').hidden=false;if(role==='owner')$('ownerPanel').hidden=false;await snapshot();say('');}catch(e){say(e.message);}}
+async function init(){if(!KBRCloud.requireLogin())return;try{role=await KBRCloud.role();if(role!=='owner'&&role!=='operator')throw Error('Staff login required.');const roster=await KBRCloud.rpc('kbr_barista_task_roster',{});const worker=(roster||[]).find(w=>w.id===workerId);if(worker){workerName=worker.name;}else{workerId='';workerName='';const picker=document.createElement('div');picker.className='inline-worker-picker';picker.innerHTML='<h2>Who is on duty?</h2><p>Select a barista currently clocked in.</p>';const choices=document.createElement('div');choices.className='worker-choices';for(const w of roster||[]){const b=document.createElement('button');b.textContent=w.name;b.onclick=()=>{const url=new URL(location.href);url.searchParams.set('worker',w.id);location.assign(url.href);};choices.append(b);}if(!roster?.length){const msg=document.createElement('p');msg.textContent='No baristas are clocked in. Please clock in first.';picker.append(msg);}picker.append(choices);$('board').before(picker);$('board').hidden=true;}if(worker)$('board').hidden=false;if(role==='owner')$('ownerPanel').hidden=false;await snapshot();say('');}catch(e){say(e.message);}}
 init();
 })();
 </script><script src="page-tools.js"></script></body></html>
