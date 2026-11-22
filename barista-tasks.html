@@ -42,19 +42,27 @@ body.evening-mode #addTask{background:#fff;color:#111;border-color:#eee}
 /* Weekend single combined task view. */
 .tabs[hidden]{display:none!important}
 body.evening-mode .panel .summary .actions{color:#fff}
+/* Owner-only inline management, without crowding the barista's Done action. */
+.task-end{display:grid;gap:5px;justify-items:end}
+.task-edit-trigger{min-height:26px;padding:3px 8px;border:1px solid #cbb5a1;background:transparent;color:#715440;border-radius:8px;font-size:12px;white-space:nowrap}
+.task-edit-trigger:hover{background:#eee2d6}
+body.evening-mode .task-edit-trigger{background:#303030;color:#fff;border-color:#777}
+#taskDialog .delete-task{margin-right:auto;background:#fff2f0;color:#ad302e;border-color:#dca29e;font-weight:700}
+#taskDialog .delete-task[hidden]{display:none}
+@media(max-width:600px){.task-edit-trigger{font-size:11px;padding:3px 6px}}
 </style></head>
 <body><main><header><div><h1>Barista Tasks</h1><div class="muted">Shared daily checklist · Kape’ Bar-Rio</div></div></header>
 <section class="panel" id="board" hidden><div class="summary"><div><strong id="shopDay"></strong><div class="muted" id="selectedWorker">Shared daily checklist</div></div><button id="refresh" type="button">Refresh tasks</button></div>
 <div class="tabs"><button id="morning" class="active"><span aria-hidden="true">☀️</span> Morning</button><button id="evening"><span aria-hidden="true">🌙</span> Evening</button></div>
 <div class="summary"><strong id="shiftName">Morning tasks</strong><div class="actions"><span id="progressText"></span><button id="addTask" type="button" hidden>+ Add task</button></div></div><progress id="progress" max="100" value="0"></progress><div id="list"></div><p class="muted">Tasks are shared by everyone in this shift. One shared checklist. Completed tasks move to the bottom.</p>
 </section>
-<dialog id="taskDialog" aria-labelledby="taskDialogTitle"><form id="taskAddForm"><h2 id="taskDialogTitle">Add task</h2><label>Task description<textarea name="title" required maxlength="180" rows="3" placeholder="What should be done?"></textarea></label><fieldset><legend>Show this task in</legend><label class="task-checkbox"><input type="checkbox" name="morning"> ☀️ Morning Tasks</label><label class="task-checkbox"><input type="checkbox" name="evening"> 🌙 Evening Tasks</label></fieldset><label>Section<select name="section"><option value="general">General tasks</option><option value="inside">Inside Shop</option><option value="dining">Dining Area</option><option value="afternoon">Dining Area · 3–5 PM</option><option value="handover">Cash Handover</option><option value="closing">Closing Tasks</option></select></label><div class="time-fields"><label>Start time (optional)<input name="time" type="time"></label><label>End time (optional)<input name="end" type="time"></label></div><p id="taskAddError" role="alert"></p><div class="actions"><button type="button" id="cancelTask">Cancel</button><button type="submit" class="primary">Save task</button></div></form></dialog>
+<dialog id="taskDialog" aria-labelledby="taskDialogTitle"><form id="taskAddForm"><h2 id="taskDialogTitle">Add task</h2><label>Task description<textarea name="title" required maxlength="180" rows="3" placeholder="What should be done?"></textarea></label><fieldset><legend>Show this task in</legend><label class="task-checkbox"><input type="checkbox" name="morning"> ☀️ Morning Tasks</label><label class="task-checkbox"><input type="checkbox" name="evening"> 🌙 Evening Tasks</label></fieldset><label>Section<select name="section"><option value="general">General tasks</option><option value="inside">Inside Shop</option><option value="dining">Dining Area</option><option value="afternoon">Dining Area · 3–5 PM</option><option value="handover">Cash Handover</option><option value="closing">Closing Tasks</option></select></label><div class="time-fields"><label>Start time (optional)<input name="time" type="time"></label><label>End time (optional)<input name="end" type="time"></label></div><p id="taskAddError" role="alert"></p><div class="actions"><button type="button" id="deleteTask" class="delete-task" hidden>Delete task</button><button type="button" id="cancelTask">Cancel</button><button type="submit" class="primary" id="saveTask">Save task</button></div></form></dialog>
 <p id="message" role="status"></p></main>
 <script src="sync-config.js"></script><script src="sync-core.js"></script><script src="sync-ui.js"></script>
 <script>
 (()=>{'use strict';
 const $=id=>document.getElementById(id);
-let shift='morning',all=[],shopDay='',role='',busy=false,shopOpen=false,isWeekend=false,workerId=new URLSearchParams(location.search).get('worker')||'',workerName='';
+let shift='morning',all=[],shopDay='',role='',busy=false,shopOpen=false,isWeekend=false,editingTaskId=null,workerId=new URLSearchParams(location.search).get('worker')||'',workerName='';
 const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','"':'&quot;',"'":'&#39;'}[c]));
 const say=(message='')=>$('message').textContent=message;
 function dateTime(value){return value?new Date(value).toLocaleString('en-PH',{timeZone:'Asia/Manila',hour:'numeric',minute:'2-digit'}):'';}
@@ -81,7 +89,7 @@ function show(){
    const time=t.due_time?(t.due_end?t.due_time+'–'+t.due_end:t.due_time):'Anytime';
    const inventoryUrl=location.hostname.endsWith('github.io')?'https://russelljohnramosmicumao-arch.github.io/Kapebarrio-inventory-system/':'https://kapebarrio-inventory-system.pages.dev/';
    const description=t.action_key==='inventory'?'<a class="task-app-link" href="'+inventoryUrl+'" target="_blank" rel="noopener noreferrer" title="Open Inventory App">'+escapeHtml(t.title)+' ↗</a>':escapeHtml(t.title);
-   return '<div class="task '+(t.completed_at?'completed':'')+'"><button class="check '+(t.completed_at?'done':'')+'" data-task="'+t.id+'" '+(t.completed_at||busy||!shopOpen?'disabled':'')+'>'+(t.completed_at?'✓':'Done')+'</button><div><div class="task-title">'+description+'</div><div class="task-note">'+(t.completed_at?'✓ '+escapeHtml(t.completed_by||'Completed')+' · '+escapeHtml(dateTime(t.completed_at)):(!shopOpen?'Shop is closed':'Not completed'))+(t.action_key==='inventory'?'<div class="muted task-app-note">Tap Inventory to open the app. Mark Done after completing the count.</div>':'')+'</div></div><div class="time '+(overdue?'late':'')+'">'+escapeHtml(time)+(overdue?'<div>Overdue</div>':'')+'</div></div>'; 
+   return '<div class="task '+(t.completed_at?'completed':'')+'"><button class="check '+(t.completed_at?'done':'')+'" data-task="'+t.id+'" '+(t.completed_at||busy||!shopOpen?'disabled':'')+'>'+(t.completed_at?'✓':'Done')+'</button><div><div class="task-title">'+description+'</div><div class="task-note">'+(t.completed_at?'✓ '+escapeHtml(t.completed_by||'Completed')+' · '+escapeHtml(dateTime(t.completed_at)):(!shopOpen?'Shop is closed':'Not completed'))+(t.action_key==='inventory'?'<div class="muted task-app-note">Tap Inventory to open the app. Mark Done after completing the count.</div>':'')+'</div></div><div class="task-end"><div class="time '+(overdue?'late':'')+'">'+escapeHtml(time)+(overdue?'<div>Overdue</div>':'')+'</div>'+(role==='owner'?'<button class="task-edit-trigger" data-edit-task="'+t.id+'" title="Edit or delete task" aria-label="Edit or delete '+escapeHtml(t.title)+'">✎ Edit</button>':'')+'</div></div>';
  };
  for(const group of groups){
    const tasks=ordered(filtered.filter(t=>(t.section||'general')===group&&!t.completed_at));
@@ -98,13 +106,37 @@ function show(){
  }
  $('list').innerHTML=pieces.length?pieces.join(''):'<p class="muted">No tasks set for this shift yet.</p>';
  $('list').querySelectorAll('[data-task]').forEach(b=>b.onclick=()=>check(Number(b.dataset.task)));
+ $('list').querySelectorAll('[data-edit-task]').forEach(b=>b.onclick=()=>editTask(Number(b.dataset.editTask)));
 }
 async function snapshot(){const result=await KBRCloud.rpc('kbr_barista_tasks_snapshot',{});all=result.tasks||[];shopDay=result.shop_day;shopOpen=!!result.shop_open;isWeekend=!!result.is_weekend;show();}
 async function check(id){if(busy)return;busy=true;say('Saving task…');show();try{if(!workerId)throw Error('Please choose the barista on duty first.');const result=await KBRCloud.rpc('kbr_barista_task_check_selected',{p_task:id,p_worker:workerId});if(result?.error)throw Error(result.error);await snapshot();say('Task completed and saved.');}catch(e){say(e.message);}finally{busy=false;show();}}
 const dialog=$('taskDialog'),taskForm=$('taskAddForm');
+function editTask(id){
+ if(role!=='owner'||busy)return;
+ const task=all.find(t=>t.id===id&&t.active);
+ if(!task){say('Task not found. Refresh and try again.');return;}
+ editingTaskId=id;
+ taskForm.reset();
+ taskForm.elements.title.value=task.title;
+ taskForm.elements.morning.checked=task.shift==='morning'||task.shift==='both';
+ taskForm.elements.evening.checked=task.shift==='evening'||task.shift==='both';
+ taskForm.elements.section.value=task.section||'general';
+ taskForm.elements.time.value=task.due_time||'';
+ taskForm.elements.end.value=task.due_end||'';
+ $('taskDialogTitle').textContent='Edit task';
+ $('saveTask').textContent='Save changes';
+ $('deleteTask').hidden=false;
+ $('taskAddError').textContent='';
+ dialog.showModal();
+}
+
 $('addTask').onclick=()=>{
  if(role!=='owner')return;
+ editingTaskId=null;
  taskForm.reset();
+ $('taskDialogTitle').textContent='Add task';
+ $('saveTask').textContent='Save task';
+ $('deleteTask').hidden=true;
  taskForm.elements.morning.checked=isWeekend||shift==='morning';
  taskForm.elements.evening.checked=isWeekend||shift==='evening';
  taskForm.elements.section.value=!isWeekend&&shift==='evening'?'general':'inside';
@@ -112,6 +144,18 @@ $('addTask').onclick=()=>{
  dialog.showModal();
 };
 $('cancelTask').onclick=()=>dialog.close();
+$('deleteTask').onclick=async()=>{
+ if(role!=='owner'||busy||editingTaskId===null)return;
+ const task=all.find(t=>t.id===editingTaskId&&t.active);
+ if(!task)return;
+ if(!confirm('Delete "'+task.title+'" from the active task list?\n\nIt will disappear from future checklists, but any prior completion history will be preserved.'))return;
+ busy=true;const remove=$('deleteTask');remove.disabled=true;$('taskAddError').textContent='';
+ try{
+  await KBRCloud.rpc('kbr_barista_task_manage_v2',{p_id:task.id,p_title:task.title,p_shift:task.shift,p_section:task.section,p_time:task.due_time||null,p_end:task.due_end||null,p_active:false,p_order:task.sort_order||0});
+  dialog.close();editingTaskId=null;await snapshot();say('Task deleted from the checklist.');
+ }catch(e){$('taskAddError').textContent=e.message||String(e);}
+ finally{busy=false;remove.disabled=false;}
+};
 taskForm.onsubmit=async event=>{
  event.preventDefault();if(busy)return;
  const morning=taskForm.elements.morning.checked,evening=taskForm.elements.evening.checked;
@@ -120,8 +164,9 @@ taskForm.onsubmit=async event=>{
  if(end&&(!start||end<=start)){$('taskAddError').textContent='End time must be later than start time.';return;}
  busy=true;const save=taskForm.querySelector('[type=submit]');save.disabled=true;$('taskAddError').textContent='';
  try{
-  await KBRCloud.rpc('kbr_barista_task_manage_v2',{p_id:null,p_title:taskForm.elements.title.value.trim(),p_shift:morning&&evening?'both':morning?'morning':'evening',p_section:taskForm.elements.section.value,p_time:start,p_end:end,p_active:true,p_order:all.length*10+10});
-  dialog.close();await snapshot();say('Task added successfully.');
+  await KBRCloud.rpc('kbr_barista_task_manage_v2',{p_id:editingTaskId,p_title:taskForm.elements.title.value.trim(),p_shift:morning&&evening?'both':morning?'morning':'evening',p_section:taskForm.elements.section.value,p_time:start,p_end:end,p_active:true,p_order:editingTaskId?(all.find(t=>t.id===editingTaskId)?.sort_order||0):all.length*10+10});
+  const edited=editingTaskId!==null;
+  dialog.close();editingTaskId=null;await snapshot();say(edited?'Task updated successfully.':'Task added successfully.');
  }catch(e){$('taskAddError').textContent=e.message||String(e);}
  finally{busy=false;save.disabled=false;}
 };
