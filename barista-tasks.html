@@ -38,6 +38,7 @@ body:not(.evening-mode) .tabs #evening{background:#111;color:#fff;border-color:#
 #taskDialog fieldset{display:flex;flex-wrap:wrap;gap:12px;border:1px solid #e4d4c4;border-radius:12px;padding:12px}#taskDialog legend{font-weight:700}#taskDialog .task-checkbox{display:flex;align-items:center;gap:7px}#taskDialog .task-checkbox input{width:18px;height:18px}
 #taskDialog .time-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}#taskAddError{margin:0;color:#a32828;min-height:0}
 body.evening-mode #addTask{background:#fff;color:#111;border-color:#eee}
+.task-app-link{color:#246f45;text-decoration:underline;text-underline-offset:4px;font-weight:800}.task-app-link:focus-visible{outline:2px solid #246f45}body.evening-mode .task-app-link{color:#fff}.task-app-note{margin-top:3px;font-size:11px}
 </style></head>
 <body><main><header><div><h1>Barista Tasks</h1><div class="muted">Shared daily checklist · Kape’ Bar-Rio</div></div></header>
 <section class="panel" id="board" hidden><div class="summary"><div><strong id="shopDay"></strong><div class="muted" id="selectedWorker">Shared daily checklist</div></div><button id="refresh" type="button">Refresh tasks</button></div>
@@ -74,7 +75,9 @@ function show(){
    const deadline=t.due_end||t.due_time;
    const overdue=!t.completed_at&&!!deadline&&(localNow.slice(0,10)>shopDay||(localNow.slice(0,10)===shopDay&&localNow.slice(11,16)>deadline));
    const time=t.due_time?(t.due_end?t.due_time+'–'+t.due_end:t.due_time):'Anytime';
-   return '<div class="task '+(t.completed_at?'completed':'')+'"><button class="check '+(t.completed_at?'done':'')+'" data-task="'+t.id+'" '+(t.completed_at||busy||!shopOpen?'disabled':'')+'>'+(t.completed_at?'✓':'Done')+'</button><div><div class="task-title">'+escapeHtml(t.title)+'</div><div class="task-note">'+(t.completed_at?'✓ '+escapeHtml(t.completed_by||'Completed')+' · '+escapeHtml(dateTime(t.completed_at)):(!shopOpen?'Shop is closed':'Not completed'))+'</div></div><div class="time '+(overdue?'late':'')+'">'+escapeHtml(time)+(overdue?'<div>Overdue</div>':'')+'</div></div>'; 
+   const inventoryUrl=location.hostname.endsWith('github.io')?'https://russelljohnramosmicumao-arch.github.io/Kapebarrio-inventory-system/':'https://kapebarrio-inventory-system.pages.dev/';
+   const description=t.action_key==='inventory'?'<a class="task-app-link" href="'+inventoryUrl+'" target="_blank" rel="noopener noreferrer" title="Open Inventory App">'+escapeHtml(t.title)+' ↗</a>':escapeHtml(t.title);
+   return '<div class="task '+(t.completed_at?'completed':'')+'"><button class="check '+(t.completed_at?'done':'')+'" data-task="'+t.id+'" '+(t.completed_at||busy||!shopOpen?'disabled':'')+'>'+(t.completed_at?'✓':'Done')+'</button><div><div class="task-title">'+description+'</div><div class="task-note">'+(t.completed_at?'✓ '+escapeHtml(t.completed_by||'Completed')+' · '+escapeHtml(dateTime(t.completed_at)):(!shopOpen?'Shop is closed':'Not completed'))+(t.action_key==='inventory'?'<div class="muted task-app-note">Tap Inventory to open the app. Mark Done after completing the count.</div>':'')+'</div></div><div class="time '+(overdue?'late':'')+'">'+escapeHtml(time)+(overdue?'<div>Overdue</div>':'')+'</div></div>'; 
  };
  for(const group of groups){
    const tasks=ordered(filtered.filter(t=>(t.section||'general')===group&&!t.completed_at));
