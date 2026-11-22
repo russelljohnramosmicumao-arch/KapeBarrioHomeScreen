@@ -131,7 +131,7 @@ async function handoverAction(s){
  if(result.error||!result.complete)throw Error(result.error||'Handover is awaiting confirmation. Review it before retrying.');clearCashDraft(form.dataset.cashDraftKey);KBRSyncUI.close();countForm=null;countKind='';await refresh();KBRSyncUI.screen('Cash handed over','Received by '+(result.incoming_name||incoming)+'. '+(result.variance!=null&&result.counted!=null?handoverDifference(result.counted,Number(result.counted)-Number(result.variance)):'' ),[['Continue',()=>KBRSyncUI.close()]]);
  }catch(e){form.querySelector('[data-handover-error]').textContent=e.message;}finally{form.elements.cashierPin.value='';form.elements.incomingPin.value='';saving=false;form.querySelector('button[type=submit]').disabled=false;}};
 }
-async function action(kind,kitchenConfirmed=false){try{await loadWorkers();}catch(e){KBRSyncUI.screen('Could not load workers',e.message,[['Back',()=>KBRSyncUI.close()]]);return;}if(saving)return;if(KBRCloud.read(queue)){retry();return;}const s=active();if(kind==='open'&&s){KBRSyncUI.close();render();return;}if(kind!=='open'&&!s){refresh(true);return;}if(kind==='handover'){await handoverAction(s);return;}if(['cash-in','cash-out'].includes(kind)){cashAction(kind,s);return;}
+async function action(kind,kitchenConfirmed=false,tasksConfirmed=false){try{await loadWorkers();}catch(e){KBRSyncUI.screen('Could not load workers',e.message,[['Back',()=>KBRSyncUI.close()]]);return;}if(saving)return;if(KBRCloud.read(queue)){retry();return;}const s=active();if(kind==='open'&&s){KBRSyncUI.close();render();return;}if(kind!=='open'&&!s){refresh(true);return;}if(kind==='handover'){await handoverAction(s);return;}if(['cash-in','cash-out'].includes(kind)){cashAction(kind,s);return;}
  if(kind==='close'){
   try{
    const food=await KBRCloud.rpc('kbr_kitchen_settlement_snapshot',{p_shift:s.id});
@@ -147,17 +147,48 @@ async function action(kind,kitchenConfirmed=false){try{await loadWorkers();}catc
     if(box)box.classList.add('kitchen-stop-warning');
     return;
    }
-   if(!kitchenConfirmed){
+   // Acknowledge kitchen settlement once per active shop shift, but always recheck the balance.
+   const kitchenAcknowledged=()=>{try{return sessionStorage.getItem('kbr-kitchen-reviewed:'+s.id)==='yes';}catch{return false;}};
+   if(!kitchenConfirmed&&!kitchenAcknowledged()){
     const noFood=total<0.005;
     KBRSyncUI.screen(noFood?'No Kitchen Food':'Kitchen Payment Complete',
      noFood?'No kitchen food was sold during this shift. You can proceed to count the closing cash.':
       'Kitchen food sold: '+money(total)+'\nKitchen paid: '+money(paid)+'\nThere is no remaining kitchen payment. You can proceed to count the closing cash.',
-     [['Back — Do not close',()=>KBRSyncUI.close()],['Continue to Closing Count',()=>{KBRSyncUI.close();action('close',true);}]]);
+     [['Back — Do not close',()=>KBRSyncUI.close()],['Continue',()=>{try{sessionStorage.setItem('kbr-kitchen-reviewed:'+s.id,'yes');}catch{} KBRSyncUI.close();action('close',true);}]]);
     const notice=document.querySelector('#cloudScreen .cloud-box>p');
     if(notice)notice.style.whiteSpace='pre-line';
     return;
    }
   }catch(e){KBRSyncUI.screen('Unable to verify kitchen settlement','Closing is blocked until the kitchen balance can be checked: '+(e.message||e),[['Back',()=>KBRSyncUI.close()]]);return;}
+  // Check the same active shop shift whose cash drawer is being closed.
+  // This runs only after a successful kitchen settlement check, and is checked again
+  // when the user returns from the task list.
+  if(!tasksConfirmed){
+   try{
+    const snapshot=await KBRCloud.rpc('kbr_barista_tasks_snapshot',{});
+    if(!snapshot||!Array.isArray(snapshot.tasks)||!snapshot.shop_open||snapshot.shift_id!==s.id)
+      throw Error('Task checklist could not be verified for this shop shift.');
+    const remaining=snapshot.tasks.filter(t=>t.active&&(t.shift==='evening'||t.shift==='both')&&!t.completed_at);
+    if(remaining.length){
+     KBRSyncUI.screen('STOP — Check Barista Tasks',
+       'Have you checked your Evening Tasks?\\n\\n'+remaining.length+' task'+(remaining.length===1?' is':'s are')+' still unfinished.\\nPlease review them before closing the shop.',
+       [['Check the Tasks',()=>{KBRSyncUI.close();location.assign(new URL('barista-tasks.html',location.href).href);}],
+        ['Proceed to Close Shop',()=>{KBRSyncUI.close();action('close',true,true);}]]
+     );
+     const box=document.querySelector('#cloudScreen .cloud-box');
+     if(box)box.classList.add('closing-tasks-reminder');
+     const p=box?.querySelector('p');
+     if(p)p.style.whiteSpace='pre-line';
+     return;
+    }
+   }catch(e){
+    KBRSyncUI.screen('Unable to verify barista tasks',
+      'The shop closing checklist could not be checked. Refresh and try again. '+(e.message||e),
+      [['Back — Do not close',()=>KBRSyncUI.close()],['Retry',()=>{KBRSyncUI.close();action('close',true);}]]
+    );
+    return;
+   }
+  }
  }
 
  const labels={open:'Open Shop Shift','cash-in':'Cash In — add change / money','cash-out':'Cash Out — supplies / refund',handover:'Cash Handover',close:'End Shop Shift'},count=['open','handover','close'].includes(kind),t=s?totals(s):null;
