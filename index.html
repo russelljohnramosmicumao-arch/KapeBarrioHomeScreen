@@ -56,9 +56,19 @@ main{padding:16px 20px;max-width:1080px}header{margin-bottom:14px}.grid{gap:12px
 <script src="sync-config.js"></script><script src="sync-core.js"></script><script src="sync-ui.js"></script><script src="manager-tile.js"></script><script>
 // Set the exact published URLs here before uploading to GitHub Pages.
 // Recipe and Costing share one workspace.
-const DEFAULT_LINKS={"ordering": "https://russelljohnramosmicumao-arch.github.io/Kape-Barrio/", "inventory": "https://russelljohnramosmicumao-arch.github.io/Kapebarrio-inventory-system/", "recipe": "https://russelljohnramosmicumao-arch.github.io/recipe-and-costing/", "attendance": "https://russelljohnramosmicumao-arch.github.io/KapeBarrioHomeScreen/clock-in.html", "shift": "https://russelljohnramosmicumao-arch.github.io/KapeBarrioHomeScreen/open-end-shift.html", "manager": "https://russelljohnramosmicumao-arch.github.io/ManagersPage/", "registration": "https://russelljohnramosmicumao-arch.github.io/KapeBarrioHomeScreen/customer-registration.html"};
+const IS_CLOUDFLARE=!location.hostname.endsWith('github.io');
+const localPage=filename=>new URL(filename,location.href).href;
+const DEFAULT_LINKS=IS_CLOUDFLARE?{
+ ordering:'https://kape-barrio.pages.dev/',
+ inventory:'https://kapebarrio-inventory-system.pages.dev/',
+ recipe:'https://recipe-and-costing.pages.dev/',
+ attendance:localPage('clock-in.html'),
+ shift:localPage('open-end-shift.html'),
+ manager:'https://managerspage.pages.dev/',
+ registration:localPage('customer-registration.html')
+}: {"ordering": "https://russelljohnramosmicumao-arch.github.io/Kape-Barrio/", "inventory": "https://russelljohnramosmicumao-arch.github.io/Kapebarrio-inventory-system/", "recipe": "https://russelljohnramosmicumao-arch.github.io/recipe-and-costing/", "attendance": "https://russelljohnramosmicumao-arch.github.io/KapeBarrioHomeScreen/clock-in.html", "shift": "https://russelljohnramosmicumao-arch.github.io/KapeBarrioHomeScreen/open-end-shift.html", "manager": "https://russelljohnramosmicumao-arch.github.io/ManagersPage/", "registration": "https://russelljohnramosmicumao-arch.github.io/KapeBarrioHomeScreen/customer-registration.html"};
 const APPS=[["ordering", "Ordering", "Take orders", "<path d=\"M6 5h12v13a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3ZM18 8h2a3 3 0 0 1 0 6h-2M9 2v1M13 2v1M3 22h18\"/>"], ["shift", "Open / Close Shop", "Cash In / Out", "<path d=\"M4 21V9h16v12M3 9l2-6h14l2 6M8 21v-7h8v7M2 21h20M3 9a3 3 0 0 0 4 0 3 3 0 0 0 5 0 3 3 0 0 0 5 0 3 3 0 0 0 4 0\"/>"], ["attendance", "Clock In / Out", "Your working hours", "<circle cx=\"12\" cy=\"13\" r=\"9\"/><path d=\"M12 8v5l3 2M9 1h6M12 1v3\"/>"], ["inventory", "Inventory", "Count and track stock", "<path d=\"m3 7 9-5 9 5v11l-9 5-9-5ZM3 7l9 5 9-5M12 12v11M7 4.8l9 5\"/>"], ["manager", "Manager", "People, inventory and sales", "<circle cx=\"12\" cy=\"8\" r=\"4\"/><path d=\"M5 22v-3a7 7 0 0 1 14 0v3M9 15l3 4 3-4\"/>"], ["recipe", "Recipe & Costing", "Recipes, prices and margins", "<path d=\"M12 5C8 2 4 3 2 4v15c3-1 6-1 10 2 4-3 7-3 10-2V4c-2-1-6-2-10 1ZM12 5v16M5 8h4M5 12h4M16 8h3M16 12h3\"/>"], ["registration", "Customer Registration", "Create rewards accounts", "<circle cx=\"9\" cy=\"8\" r=\"4\"/><path d=\"M2 22v-3a7 7 0 0 1 14 0v3M19 8v8M15 12h8\"/>"]];
-const KEY='kape-barrio-home-links-v4';let links={...DEFAULT_LINKS};
+const KEY=IS_CLOUDFLARE?'kape-barrio-home-links-cf-main-v2':'kape-barrio-home-links-v4';let links={...DEFAULT_LINKS};
 try{const saved=JSON.parse(localStorage.getItem(KEY)||'{}');for(const [id] of APPS){if(typeof saved[id]==='string'&&validLink(saved[id]))links[id]=saved[id]}}catch{}
 function validLink(value){try{const url=new URL(value);return ['https:','http:'].includes(url.protocol)&&!url.username&&!url.password}catch{return false}}
 const taskURL=new URL('barista-tasks.html',location.href).href;
