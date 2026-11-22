@@ -52,7 +52,7 @@ main{padding:16px 20px;max-width:1080px}header{margin-bottom:14px}.grid{gap:12px
 <p id="notice" role="status" aria-live="polite"></p>
 <footer><span>Kape’ Bar-Rio · Staff home</span><button class="settings" id="configure">Set app links</button></footer>
 </main>
-<dialog id="taskPicker" aria-labelledby="taskPickerTitle"><h2 id="taskPickerTitle">Who is on duty?</h2><p>Select the barista completing tasks today. No extra PIN is required.</p><div id="taskPeople" class="task-person-grid"></div><p id="taskPickerStatus" role="status"></p><div class="actions"><button id="closeTaskPicker" type="button" class="cancel">Close</button></div></dialog><dialog id="settings"><form id="linksForm"><h2>Connect your apps</h2><p>Enter the full page address for each button. These settings are saved on this browser. Changes here apply only to this browser.</p><div id="fields"></div><p id="error" role="alert"></p><div class="actions"><button type="button" class="cancel" id="restoreDefaults">Restore links</button><button type="button" class="cancel" id="cancel">Cancel</button><button type="submit" class="save">Save links</button></div></form></dialog>
+<dialog id="taskPicker" aria-labelledby="taskPickerTitle"><h2 id="taskPickerTitle">Who is on duty?</h2><p>Only clocked-in baristas appear here. Select the person completing the tasks.</p><div id="taskPeople" class="task-person-grid"></div><p id="taskPickerStatus" role="status"></p><div class="actions"><button id="closeTaskPicker" type="button" class="cancel">Close</button></div></dialog><dialog id="settings"><form id="linksForm"><h2>Connect your apps</h2><p>Enter the full page address for each button. These settings are saved on this browser. Changes here apply only to this browser.</p><div id="fields"></div><p id="error" role="alert"></p><div class="actions"><button type="button" class="cancel" id="restoreDefaults">Restore links</button><button type="button" class="cancel" id="cancel">Cancel</button><button type="submit" class="save">Save links</button></div></form></dialog>
 <script src="sync-config.js"></script><script src="sync-core.js"></script><script src="sync-ui.js"></script><script src="manager-tile.js"></script><script>
 // Set the exact published URLs here before uploading to GitHub Pages.
 // Recipe and Costing share one workspace.
@@ -105,8 +105,8 @@ async function openTaskPicker(){
  const dlg=document.getElementById('taskPicker'),host=document.getElementById('taskPeople'),status=document.getElementById('taskPickerStatus');
  host.replaceChildren();status.textContent='Loading baristas…';dlg.showModal();
  try{
-  const roster=await KBRCloud.rpc('kbr_clock_roster',{});
-  if(!roster?.length)throw Error('No active baristas found. Sign in to the Home Screen.');
+  const roster=await KBRCloud.rpc('kbr_barista_task_roster',{});
+  if(!roster?.length)throw Error('No baristas are currently clocked in. Clock In first, then open Barista Tasks.');
   for(const worker of roster){
    const button=document.createElement('button');button.type='button';button.className='task-person';
    const [bg,fg]=personColors[String(worker.name||'').toLowerCase().split(' ')[0]]||['#eadbc9','#503827'];
@@ -114,7 +114,7 @@ async function openTaskPicker(){
    button.onclick=()=>{const url=new URL(taskURL);url.searchParams.set('worker',worker.id);location.assign(url.href);};
    host.append(button);
   }
-  status.textContent='Choose the person on duty.';
+  status.textContent='Showing only baristas currently clocked in.';
  }catch(e){status.textContent=e.message||String(e);}
 }
 document.getElementById('closeTaskPicker').onclick=()=>document.getElementById('taskPicker').close();
