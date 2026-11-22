@@ -31,13 +31,20 @@ body.evening-mode .owner-task,body.evening-mode .editor input,body.evening-mode 
 body.evening-mode .owner-task summary small{color:#ddd}
 body.evening-mode #message{color:#ffd0c5}
 body:not(.evening-mode) .tabs #evening{background:#111;color:#fff;border-color:#111}
+
+#taskDialog{width:min(520px,calc(100% - 24px));max-height:90dvh;overflow:auto;border:1px solid #d4b99f;border-radius:20px;padding:22px;background:#fff;color:#503827;box-shadow:0 20px 80px #0005}
+#taskDialog::backdrop{background:#17100bd0}#taskDialog form{display:grid;gap:14px}#taskDialog h2{margin:0;color:#503827}
+#taskDialog label{display:grid;gap:5px;font-weight:650}#taskDialog input:not([type=checkbox]),#taskDialog select,#taskDialog textarea{min-height:43px;width:100%;padding:10px;border:1px solid #cbb5a1;border-radius:10px;font:inherit}
+#taskDialog fieldset{display:flex;flex-wrap:wrap;gap:12px;border:1px solid #e4d4c4;border-radius:12px;padding:12px}#taskDialog legend{font-weight:700}#taskDialog .task-checkbox{display:flex;align-items:center;gap:7px}#taskDialog .task-checkbox input{width:18px;height:18px}
+#taskDialog .time-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}#taskAddError{margin:0;color:#a32828;min-height:0}
+body.evening-mode #addTask{background:#fff;color:#111;border-color:#eee}
 </style></head>
 <body><main><header><div><h1>Barista Tasks</h1><div class="muted">Shared daily checklist · Kape’ Bar-Rio</div></div></header>
 <section class="panel" id="board" hidden><div class="summary"><div><strong id="shopDay"></strong><div class="muted" id="selectedWorker">Shared daily checklist</div></div><button id="refresh" type="button">Refresh tasks</button></div>
 <div class="tabs"><button id="morning" class="active"><span aria-hidden="true">☀️</span> Morning</button><button id="evening"><span aria-hidden="true">🌙</span> Evening</button></div>
-<div class="summary"><strong id="shiftName">Morning tasks</strong><span id="progressText"></span></div><progress id="progress" max="100" value="0"></progress><div id="list"></div><p class="muted">Tasks are shared by everyone in this shift. One shared checklist. Completed tasks move to the bottom.</p>
+<div class="summary"><strong id="shiftName">Morning tasks</strong><div class="actions"><span id="progressText"></span><button id="addTask" type="button" hidden>+ Add task</button></div></div><progress id="progress" max="100" value="0"></progress><div id="list"></div><p class="muted">Tasks are shared by everyone in this shift. One shared checklist. Completed tasks move to the bottom.</p>
 </section>
-<section class="panel" id="ownerPanel" hidden><div class="summary"><h2 style="margin:0;font-size:19px">Manage task schedule</h2><button id="addTask">+ Add task</button></div><p class="muted">Owner only. Edit section, optional time windows, shift, wording and availability. Inactive tasks do not appear on barista checklists.</p><div id="editors"></div></section>
+<dialog id="taskDialog" aria-labelledby="taskDialogTitle"><form id="taskAddForm"><h2 id="taskDialogTitle">Add task</h2><label>Task description<textarea name="title" required maxlength="180" rows="3" placeholder="What should be done?"></textarea></label><fieldset><legend>Show this task in</legend><label class="task-checkbox"><input type="checkbox" name="morning"> ☀️ Morning Tasks</label><label class="task-checkbox"><input type="checkbox" name="evening"> 🌙 Evening Tasks</label></fieldset><label>Section<select name="section"><option value="general">General tasks</option><option value="inside">Inside Shop</option><option value="dining">Dining Area</option><option value="afternoon">Dining Area · 3–5 PM</option><option value="handover">Cash Handover</option></select></label><div class="time-fields"><label>Start time (optional)<input name="time" type="time"></label><label>End time (optional)<input name="end" type="time"></label></div><p id="taskAddError" role="alert"></p><div class="actions"><button type="button" id="cancelTask">Cancel</button><button type="submit" class="primary">Save task</button></div></form></dialog>
 <p id="message" role="status"></p></main>
 <script src="sync-config.js"></script><script src="sync-core.js"></script><script src="sync-ui.js"></script>
 <script>
@@ -85,41 +92,34 @@ function show(){
  $('list').innerHTML=pieces.length?pieces.join(''):'<p class="muted">No tasks set for this shift yet.</p>';
  $('list').querySelectorAll('[data-task]').forEach(b=>b.onclick=()=>check(Number(b.dataset.task)));
 }
-async function snapshot(){const result=await KBRCloud.rpc('kbr_barista_tasks_snapshot',{});all=result.tasks||[];shopDay=result.shop_day;shopOpen=!!result.shop_open;show();if(role==='owner')renderOwner();}
+async function snapshot(){const result=await KBRCloud.rpc('kbr_barista_tasks_snapshot',{});all=result.tasks||[];shopDay=result.shop_day;shopOpen=!!result.shop_open;show();}
 async function check(id){if(busy)return;busy=true;say('Saving task…');show();try{if(!workerId)throw Error('Please choose the barista on duty first.');const result=await KBRCloud.rpc('kbr_barista_task_check_selected',{p_task:id,p_worker:workerId});if(result?.error)throw Error(result.error);await snapshot();say('Task completed and saved.');}catch(e){say(e.message);}finally{busy=false;show();}}
-function renderOwner(){
- const host=$('editors');
- const sections=['general','inside','dining','afternoon','handover'];
- const sectionText={general:'General',inside:'Inside Shop',dining:'Dining Area',afternoon:'3–5 PM Dining Area',handover:'5:30 PM Cash Handover'};
- host.innerHTML=all.map(t=>'<details class="owner-task"><summary>'+escapeHtml(t.title)+' <small>· '+escapeHtml(sectionText[t.section]||'General')+(t.active?'':' · Inactive')+'</small></summary><form class="editor" data-edit="'+t.id+'">'+
- '<label>Task<input name="title" maxlength="180" required value="'+escapeHtml(t.title)+'"></label>'+
- '<label>Shift<select name="shift">'+['morning','evening','both'].map(v=>'<option value="'+v+'" '+(v===t.shift?'selected':'')+'>'+v+'</option>').join('')+'</select></label>'+
- '<label>Section<select name="section">'+sections.map(v=>'<option value="'+v+'" '+(v===(t.section||'general')?'selected':'')+'>'+escapeHtml(sectionText[v])+'</option>').join('')+'</select></label>'+
- '<label>Start time (optional)<input name="time" type="time" value="'+escapeHtml(t.due_time||'')+'"></label>'+
- '<label>End time (optional)<input name="end" type="time" value="'+escapeHtml(t.due_end||'')+'"></label>'+
- '<label class="active-switch"><input name="active" type="checkbox" '+(t.active?'checked':'')+'> Active</label>'+
- '<button type="submit">Save</button></form></details>').join('');
- for(const t of all){const form=host.querySelector('[data-edit="'+t.id+'"]');form.onsubmit=event=>saveTask(event,t.id,t.sort_order);}
-}
-async function saveTask(event,id,order=0){
- event.preventDefault();const form=event.currentTarget;if(busy)return;busy=true;say('Saving…');
- try{
-  await KBRCloud.rpc('kbr_barista_task_manage_v2',{p_id:id,p_title:form.elements.title.value,p_shift:form.elements.shift.value,p_section:form.elements.section.value,p_time:form.elements.time.value||null,p_end:form.elements.end.value||null,p_active:form.elements.active.checked,p_order:order});
-  await snapshot();say('Task settings saved.');
- }catch(e){say(e.message);}finally{busy=false;}
-}
+const dialog=$('taskDialog'),taskForm=$('taskAddForm');
 $('addTask').onclick=()=>{
- const form=document.createElement('form');form.className='editor new-task';
- form.innerHTML='<label>Task<input name="title" required maxlength="180" placeholder="Task description"></label>'+
- '<label>Shift<select name="shift"><option>morning</option><option>evening</option><option>both</option></select></label>'+
- '<label>Section<select name="section"><option value="inside">Inside Shop</option><option value="dining">Dining Area</option><option value="afternoon">3–5 PM Dining Area</option><option value="handover">5:30 PM Cash Handover</option><option value="general">General</option></select></label>'+
- '<label>Start time<input name="time" type="time"></label><label>End time<input name="end" type="time"></label>'+
- '<label class="active-switch"><input name="active" type="checkbox" checked> Active</label><button type="submit">Add task</button>';
- $('editors').prepend(form);form.onsubmit=e=>saveTask(e,null,all.length*10+10);
+ if(role!=='owner')return;
+ taskForm.reset();
+ taskForm.elements[shift].checked=true;
+ taskForm.elements.section.value=shift==='evening'?'general':'inside';
+ $('taskAddError').textContent='';
+ dialog.showModal();
+};
+$('cancelTask').onclick=()=>dialog.close();
+taskForm.onsubmit=async event=>{
+ event.preventDefault();if(busy)return;
+ const morning=taskForm.elements.morning.checked,evening=taskForm.elements.evening.checked;
+ if(!morning&&!evening){$('taskAddError').textContent='Select at least one shift.';return;}
+ const start=taskForm.elements.time.value||null,end=taskForm.elements.end.value||null;
+ if(end&&(!start||end<=start)){$('taskAddError').textContent='End time must be later than start time.';return;}
+ busy=true;const save=taskForm.querySelector('[type=submit]');save.disabled=true;$('taskAddError').textContent='';
+ try{
+  await KBRCloud.rpc('kbr_barista_task_manage_v2',{p_id:null,p_title:taskForm.elements.title.value.trim(),p_shift:morning&&evening?'both':morning?'morning':'evening',p_section:taskForm.elements.section.value,p_time:start,p_end:end,p_active:true,p_order:all.length*10+10});
+  dialog.close();await snapshot();say('Task added successfully.');
+ }catch(e){$('taskAddError').textContent=e.message||String(e);}
+ finally{busy=false;save.disabled=false;}
 };
 for(const s of ['morning','evening'])$(s).onclick=()=>{shift=s;show();};
 $('refresh').onclick=async()=>{try{await snapshot();say('Tasks refreshed.');}catch(e){say(e.message);}};
-async function init(){if(!KBRCloud.requireLogin())return;try{role=await KBRCloud.role();if(role!=='owner'&&role!=='operator')throw Error('Staff login required.');const roster=await KBRCloud.rpc('kbr_barista_task_roster',{});const worker=(roster||[]).find(w=>w.id===workerId);if(worker){workerName=worker.name;}else{workerId='';workerName='';const picker=document.createElement('div');picker.className='inline-worker-picker';picker.innerHTML='<h2>Who is on duty?</h2><p>Select a barista currently clocked in.</p>';const choices=document.createElement('div');choices.className='worker-choices';for(const w of roster||[]){const b=document.createElement('button');b.textContent=w.name;b.onclick=()=>{const url=new URL(location.href);url.searchParams.set('worker',w.id);location.assign(url.href);};choices.append(b);}if(!roster?.length){const msg=document.createElement('p');msg.textContent='No baristas are clocked in. Please clock in first.';picker.append(msg);}picker.append(choices);$('board').before(picker);$('board').hidden=true;}if(worker)$('board').hidden=false;if(role==='owner')$('ownerPanel').hidden=false;await snapshot();say('');}catch(e){say(e.message);}}
+async function init(){if(!KBRCloud.requireLogin())return;try{role=await KBRCloud.role();if(role!=='owner'&&role!=='operator')throw Error('Staff login required.');const roster=await KBRCloud.rpc('kbr_barista_task_roster',{});const worker=(roster||[]).find(w=>w.id===workerId);if(worker){workerName=worker.name;}else{workerId='';workerName='';const picker=document.createElement('div');picker.className='inline-worker-picker';picker.innerHTML='<h2>Who is on duty?</h2><p>Select a barista currently clocked in.</p>';const choices=document.createElement('div');choices.className='worker-choices';for(const w of roster||[]){const b=document.createElement('button');b.textContent=w.name;b.onclick=()=>{const url=new URL(location.href);url.searchParams.set('worker',w.id);location.assign(url.href);};choices.append(b);}if(!roster?.length){const msg=document.createElement('p');msg.textContent='No baristas are clocked in. Please clock in first.';picker.append(msg);}picker.append(choices);$('board').before(picker);$('board').hidden=true;}if(worker)$('board').hidden=false;if(role==='owner')$('addTask').hidden=false;await snapshot();say('');}catch(e){say(e.message);}}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&role)snapshot().catch(e=>say(e.message));});
 window.addEventListener('focus',()=>{if(role)snapshot().catch(e=>say(e.message));});
 init();
