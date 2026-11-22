@@ -3,6 +3,12 @@ const status=document.getElementById('shopStatus');
 const panel=document.getElementById('shiftPanel');
 const tiles=document.getElementById('shiftTiles');
 let started=false,owner=false;
+const section=new URLSearchParams(location.search).get('section')==='cash'?'cash':'shop';
+const shopIds=new Set(['shopTile','correctOpeningTile','activityTile','cashTile','recordsTile']);
+const cashIds=new Set(['cashInTile','cashOutTile','cashHistoryTile']);
+tiles.dataset.section=section;
+document.getElementById('registryHeading').textContent=section==='cash'?'Cash In / Cash Out':'Open / Close Shop';
+for(const button of tiles.querySelectorAll('.shift-tile')){button.classList.add((shopIds.has(button.id)?'shop':'cash')+'-section');if(button.id==='handoverTile')button.hidden=true;}
 function updateTiles(){
  const state=KBRShift.snapshot(),shift=state.shift,loaded=state.loaded;
  const shop=document.getElementById('shopTile');
@@ -14,7 +20,7 @@ function updateTiles(){
  document.getElementById('recordsTile').hidden=!owner;
  for(const tile of tiles.querySelectorAll('.shift-tile')){
   const kind=tile.dataset.shiftAction||tile.dataset.shiftView;
-  const requiresOpen=kind!=='toggle-shop'&&kind!=='history';
+  const requiresOpen=!['toggle-shop','history','cash-history'].includes(kind);
   const restricted=(kind==='correct-opening'||kind==='history')&&!owner;
   tile.disabled=!loaded||(requiresOpen&&!shift)||restricted;
  }
@@ -45,7 +51,7 @@ async function start(){
   if(!['owner','operator'].includes(role))throw Error('Staff login required.');
   owner=role==='owner';KBRShift.setOwnerAccess(owner);KBRShift.setTab('cash');
   await KBRShift.refresh();updateTiles();
-  status.textContent=KBRShift.snapshot().loaded?'Choose an action from the tiles.':'Unable to load shop status. Refresh or reopen this page.';
+  status.textContent=KBRShift.snapshot().loaded?(section==='cash'?'Choose Cash In, Cash Out, or Cash In / Cash Out History.':'Choose a shop or drawer action.'):'Unable to load shop status. Refresh or reopen this page.';
   if(!started){
    started=true;let lastResumeRefresh=0;
    const refreshOnReturn=()=>{
