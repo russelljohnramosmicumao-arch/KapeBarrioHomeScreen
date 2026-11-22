@@ -11,6 +11,26 @@ button,input,select{font:inherit}button{border:1px solid #c9ad95;border-radius:1
 #message{min-height:24px;color:#8f3b23}.editor{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;align-items:end}.editor .active-switch{display:flex;gap:6px;align-items:center}.editor button{justify-self:start}.editor label{font-size:12px;font-weight:700}.editor input,.editor select{display:block;width:100%;margin-top:4px;border:1px solid #cbb5a1;border-radius:9px;padding:9px;min-height:42px}
 @media(max-width:600px){main{padding:12px}.task{grid-template-columns:62px minmax(0,1fr) 72px;gap:8px}.task .check{width:57px;padding:9px 2px}.time{font-size:10px}.editor{grid-template-columns:1fr 1fr}.editor label:first-child{grid-column:span 2}}
 .worker-choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:8px}.inline-worker-picker{background:white;border:1px solid #dbc8b5;border-radius:16px;padding:18px;margin:12px 0}.tabs button{display:flex;align-items:center;justify-content:center;gap:7px}.task .task-title{overflow-wrap:anywhere}
+
+/* Evening shift: black panels with high-contrast white tasks */
+body.evening-mode{background:#111111;color:#f7f7f7}
+body.evening-mode .panel,body.evening-mode .task-group{background:#191919;border-color:#454545;color:#fff}
+body.evening-mode .group-heading,body.evening-mode .task-title,body.evening-mode .time,body.evening-mode h1,body.evening-mode h2{color:#fff}
+body.evening-mode .muted,body.evening-mode .task-note,body.evening-mode .group-note{color:#cacaca}
+body.evening-mode .task{border-top-color:#414141}
+body.evening-mode .group-heading span{background:#383838;color:#fff}
+body.evening-mode .completed-group{background:#252525;border-color:#555}
+body.evening-mode .check{background:#fff;color:#111;border-color:#fff}
+body.evening-mode .check.done{background:#444;color:#fff;border-color:#777}
+body.evening-mode .late{color:#ff9d9d}
+body.evening-mode progress{accent-color:#fff}
+body.evening-mode .tabs button{border-color:#666;background:#2c2c2c;color:#fff}
+body.evening-mode .tabs button.active{background:#000;border-color:#fff;color:#fff}
+body.evening-mode #refresh,body.evening-mode #addTask,body.evening-mode .owner-task button{background:#323232;color:white;border-color:#777}
+body.evening-mode .owner-task,body.evening-mode .editor input,body.evening-mode .editor select{background:#262626;color:#fff;border-color:#555}
+body.evening-mode .owner-task summary small{color:#ddd}
+body.evening-mode #message{color:#ffd0c5}
+body:not(.evening-mode) .tabs #evening{background:#111;color:#fff;border-color:#111}
 </style></head>
 <body><main><header><div><h1>Barista Tasks</h1><div class="muted">Shared daily checklist · Kape’ Bar-Rio</div></div></header>
 <section class="panel" id="board" hidden><div class="summary"><div><strong id="shopDay"></strong><div class="muted" id="selectedWorker">Shared daily checklist</div></div><button id="refresh" type="button">Refresh tasks</button></div>
@@ -28,6 +48,7 @@ const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<
 const say=(message='')=>$('message').textContent=message;
 function dateTime(value){return value?new Date(value).toLocaleString('en-PH',{timeZone:'Asia/Manila',hour:'numeric',minute:'2-digit'}):'';}
 function show(){
+ document.body.classList.toggle('evening-mode',shift==='evening');
  $('shopDay').textContent='Shop day: '+shopDay;
  $('selectedWorker').textContent=workerName?'On duty: '+workerName:'Choose the barista on duty';
  for(const s of ['morning','evening']){$(s).classList.toggle('active',s===shift);$(s).setAttribute('aria-selected',s===shift);}
