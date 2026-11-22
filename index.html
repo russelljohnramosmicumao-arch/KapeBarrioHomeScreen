@@ -87,6 +87,7 @@ const icons={
  shop:'<path d="M4 21V9h16v12M3 9l2-6h14l2 6M8 21v-7h8v7M2 21h20"/>'
 };
 function nav(id,label){if(validLink(links[id])){if(id==='manager')KBRManagerTile.open(links[id]);else location.assign(links[id]);}else document.getElementById('notice').textContent='Set the page link for '+label+' to connect this button.';}
+function openShiftSection(section){const base=validLink(links.shift)?links.shift:localPage('open-end-shift.html');const url=new URL(base,location.href);url.searchParams.set('section',section);location.assign(url.href);}
 for(const [id,title,desc,icon] of APPS){
  const root=document.getElementById('apps');
  if(id==='attendance'){
@@ -98,9 +99,9 @@ for(const [id,title,desc,icon] of APPS){
   wrap.append(makeTile('tasks','Barista Tasks','Morning & evening checklist',icons.tasks,()=>openTaskPicker(),true));root.append(wrap);
  }else if(id==='shift'){
   const wrap=document.createElement('div');wrap.className='split-home-tile split-shop';
-  const shop=makeTile('shift','Open / Close Shop','Shop status',icons.shop,()=>nav('shift','Open / Close Shop'),true);
+  const shop=makeTile('shift','Open / Close Shop','Shop status',icons.shop,()=>openShiftSection('shop'),true);
   shop.id='homeShopButton';
-  wrap.append(shop,makeTile('cash','Cash In / Out','Cash registry',icons.cash,()=>nav('shift','Cash In / Out'),true));
+  wrap.append(shop,makeTile('cash','Cash In / Out','Cash registry',icons.cash,()=>openShiftSection('cash'),true));
   root.append(wrap);
  }else{
   const compact=id==='recipe'||id==='registration';const button=makeTile(id,title,desc,icon,()=>nav(id,title),compact);
