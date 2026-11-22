@@ -39,6 +39,9 @@ body:not(.evening-mode) .tabs #evening{background:#111;color:#fff;border-color:#
 #taskDialog .time-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}#taskAddError{margin:0;color:#a32828;min-height:0}
 body.evening-mode #addTask{background:#fff;color:#111;border-color:#eee}
 .task-app-link{color:#246f45;text-decoration:underline;text-underline-offset:4px;font-weight:800}.task-app-link:focus-visible{outline:2px solid #246f45}body.evening-mode .task-app-link{color:#fff}.task-app-note{margin-top:3px;font-size:11px}
+/* Weekend single combined task view. */
+.tabs[hidden]{display:none!important}
+body.evening-mode .panel .summary .actions{color:#fff}
 </style></head>
 <body><main><header><div><h1>Barista Tasks</h1><div class="muted">Shared daily checklist · Kape’ Bar-Rio</div></div></header>
 <section class="panel" id="board" hidden><div class="summary"><div><strong id="shopDay"></strong><div class="muted" id="selectedWorker">Shared daily checklist</div></div><button id="refresh" type="button">Refresh tasks</button></div>
@@ -51,24 +54,25 @@ body.evening-mode #addTask{background:#fff;color:#111;border-color:#eee}
 <script>
 (()=>{'use strict';
 const $=id=>document.getElementById(id);
-let shift='morning',all=[],shopDay='',role='',busy=false,shopOpen=false,workerId=new URLSearchParams(location.search).get('worker')||'',workerName='';
+let shift='morning',all=[],shopDay='',role='',busy=false,shopOpen=false,isWeekend=false,workerId=new URLSearchParams(location.search).get('worker')||'',workerName='';
 const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','"':'&quot;',"'":'&#39;'}[c]));
 const say=(message='')=>$('message').textContent=message;
 function dateTime(value){return value?new Date(value).toLocaleString('en-PH',{timeZone:'Asia/Manila',hour:'numeric',minute:'2-digit'}):'';}
 function show(){
- document.body.classList.toggle('evening-mode',shift==='evening');
+ document.body.classList.toggle('evening-mode',isWeekend||shift==='evening');
+ $('morning').parentElement.hidden=isWeekend;
  $('shopDay').textContent=shopOpen?'Shop day: '+shopDay:'Shop closed · checklist will reset on next opening';
  $('selectedWorker').textContent=workerName?'On duty: '+workerName:'Choose a clocked-in barista';
  for(const s of ['morning','evening']){$(s).classList.toggle('active',s===shift);$(s).setAttribute('aria-selected',s===shift);}
- $('shiftName').textContent=shift==='morning'?'Morning tasks':'Evening tasks';
- const filtered=all.filter(t=>t.active&&(t.shift===shift||t.shift==='both'));
+ $('shiftName').textContent=isWeekend?'🌗 Weekend Tasks':shift==='morning'?'Morning tasks':'Evening tasks';
+ const filtered=all.filter(t=>t.active&&(isWeekend||t.shift===shift||t.shift==='both')&&(!isWeekend||t.section!=='handover'));
  const count=filtered.filter(t=>t.completed_at).length;
  $('progressText').textContent=count+'/'+filtered.length+' completed';
  $('progress').value=filtered.length?Math.round(100*count/filtered.length):0;
  $('board').classList.toggle('shop-closed',!shopOpen);
  const localNow=new Date().toLocaleString('sv-SE',{timeZone:'Asia/Manila'}).replace(' ','T');
  const labels={inside:'Inside Shop',dining:'Dining Area',afternoon:'Dining Area · 3:00–5:00 PM',handover:'Cash Handover · 5:30 PM',closing:'Closing Tasks',general:'General Tasks'};
- const groups=shift==='morning'?['inside','dining','afternoon','handover','closing','general']:['general','inside','dining','afternoon','handover','closing'];
+ const groups=isWeekend?['inside','dining','afternoon','closing','general']:shift==='morning'?['inside','dining','afternoon','handover','closing','general']:['general','inside','dining','afternoon','handover','closing'];
  const pieces=[];
  const ordered=(tasks)=>tasks.sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)||a.id-b.id);
  const renderTask=(t)=>{
@@ -95,14 +99,15 @@ function show(){
  $('list').innerHTML=pieces.length?pieces.join(''):'<p class="muted">No tasks set for this shift yet.</p>';
  $('list').querySelectorAll('[data-task]').forEach(b=>b.onclick=()=>check(Number(b.dataset.task)));
 }
-async function snapshot(){const result=await KBRCloud.rpc('kbr_barista_tasks_snapshot',{});all=result.tasks||[];shopDay=result.shop_day;shopOpen=!!result.shop_open;show();}
+async function snapshot(){const result=await KBRCloud.rpc('kbr_barista_tasks_snapshot',{});all=result.tasks||[];shopDay=result.shop_day;shopOpen=!!result.shop_open;isWeekend=!!result.is_weekend;show();}
 async function check(id){if(busy)return;busy=true;say('Saving task…');show();try{if(!workerId)throw Error('Please choose the barista on duty first.');const result=await KBRCloud.rpc('kbr_barista_task_check_selected',{p_task:id,p_worker:workerId});if(result?.error)throw Error(result.error);await snapshot();say('Task completed and saved.');}catch(e){say(e.message);}finally{busy=false;show();}}
 const dialog=$('taskDialog'),taskForm=$('taskAddForm');
 $('addTask').onclick=()=>{
  if(role!=='owner')return;
  taskForm.reset();
- taskForm.elements[shift].checked=true;
- taskForm.elements.section.value=shift==='evening'?'general':'inside';
+ taskForm.elements.morning.checked=isWeekend||shift==='morning';
+ taskForm.elements.evening.checked=isWeekend||shift==='evening';
+ taskForm.elements.section.value=!isWeekend&&shift==='evening'?'general':'inside';
  $('taskAddError').textContent='';
  dialog.showModal();
 };
@@ -120,7 +125,7 @@ taskForm.onsubmit=async event=>{
  }catch(e){$('taskAddError').textContent=e.message||String(e);}
  finally{busy=false;save.disabled=false;}
 };
-for(const s of ['morning','evening'])$(s).onclick=()=>{shift=s;show();};
+for(const s of ['morning','evening'])$(s).onclick=()=>{if(isWeekend)return;shift=s;show();};
 $('refresh').onclick=async()=>{try{await snapshot();say('Tasks refreshed.');}catch(e){say(e.message);}};
 async function init(){if(!KBRCloud.requireLogin())return;try{role=await KBRCloud.role();if(role!=='owner'&&role!=='operator')throw Error('Staff login required.');const roster=await KBRCloud.rpc('kbr_barista_task_roster',{});const worker=(roster||[]).find(w=>w.id===workerId);if(worker){workerName=worker.name;}else{workerId='';workerName='';const picker=document.createElement('div');picker.className='inline-worker-picker';picker.innerHTML='<h2>Who is on duty?</h2><p>Select a barista currently clocked in.</p>';const choices=document.createElement('div');choices.className='worker-choices';for(const w of roster||[]){const b=document.createElement('button');b.textContent=w.name;b.onclick=()=>{const url=new URL(location.href);url.searchParams.set('worker',w.id);location.assign(url.href);};choices.append(b);}if(!roster?.length){const msg=document.createElement('p');msg.textContent='No baristas are clocked in. Please clock in first.';picker.append(msg);}picker.append(choices);$('board').before(picker);$('board').hidden=true;}if(worker)$('board').hidden=false;if(role==='owner')$('addTask').hidden=false;await snapshot();say('');}catch(e){say(e.message);}}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&role)snapshot().catch(e=>say(e.message));});
