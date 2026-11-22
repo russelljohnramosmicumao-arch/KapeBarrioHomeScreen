@@ -43,6 +43,7 @@ main{padding:16px 20px;max-width:1080px}header{margin-bottom:14px}.grid{gap:12px
 .split-shop .tile-cash{background:#e3f0e9;color:#286346;border-color:#54976e}
 @media(max-width:599px){.home-triple{height:clamp(126px,calc((100dvh - 140px)/3),165px);gap:7px}.home-attendance-pair{gap:6px}.home-triple .tile{padding:5px;border-radius:11px}.home-triple .tile strong{font-size:10px}.home-triple .tile-tasks{gap:6px}.home-triple .tile-tasks .desc{font-size:9px}.home-triple .tile .icon{width:27px;height:27px;flex-basis:27px}.home-triple .tile .icon svg{width:19px;height:19px}}
 @media(min-width:600px) and (max-height:520px){.home-triple{height:150px}}
+.task-person-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:12px}.task-person{min-height:88px;border:2px solid #0002;border-radius:15px;font-weight:800;font-size:17px;cursor:pointer}#taskPicker{width:min(640px,calc(100% - 24px))}#taskPicker p{font-weight:400;color:#756354}
 </style>
 <link rel="stylesheet" href="page-tools.css"><link rel="stylesheet" href="sync.css"><link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="./apple-touch-icon.png?v=20261117-home"><link rel="icon" type="image/png" href="./apple-touch-icon.png?v=20261117-home"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Kape Bar-Rio"></head>
 <body><main>
@@ -51,7 +52,7 @@ main{padding:16px 20px;max-width:1080px}header{margin-bottom:14px}.grid{gap:12px
 <p id="notice" role="status" aria-live="polite"></p>
 <footer><span>Kape’ Bar-Rio · Staff home</span><button class="settings" id="configure">Set app links</button></footer>
 </main>
-<dialog id="settings"><form id="linksForm"><h2>Connect your apps</h2><p>Enter the full page address for each button. These settings are saved on this browser. Changes here apply only to this browser.</p><div id="fields"></div><p id="error" role="alert"></p><div class="actions"><button type="button" class="cancel" id="restoreDefaults">Restore links</button><button type="button" class="cancel" id="cancel">Cancel</button><button type="submit" class="save">Save links</button></div></form></dialog>
+<dialog id="taskPicker" aria-labelledby="taskPickerTitle"><h2 id="taskPickerTitle">Who is on duty?</h2><p>Select the barista completing tasks today. No extra PIN is required.</p><div id="taskPeople" class="task-person-grid"></div><p id="taskPickerStatus" role="status"></p><div class="actions"><button id="closeTaskPicker" type="button" class="cancel">Close</button></div></dialog><dialog id="settings"><form id="linksForm"><h2>Connect your apps</h2><p>Enter the full page address for each button. These settings are saved on this browser. Changes here apply only to this browser.</p><div id="fields"></div><p id="error" role="alert"></p><div class="actions"><button type="button" class="cancel" id="restoreDefaults">Restore links</button><button type="button" class="cancel" id="cancel">Cancel</button><button type="submit" class="save">Save links</button></div></form></dialog>
 <script src="sync-config.js"></script><script src="sync-core.js"></script><script src="sync-ui.js"></script><script src="manager-tile.js"></script><script>
 // Set the exact published URLs here before uploading to GitHub Pages.
 // Recipe and Costing share one workspace.
@@ -84,7 +85,7 @@ for(const [id,title,desc,icon] of APPS){
   pair.append(
    makeTile('clock-in','Clock In','Start duty',icons.clock,()=>nav('attendance','Clock In'),true),
    makeTile('clock-out','Clock Out','End duty',icons.clock,()=>nav('attendance','Clock Out'),true));
-  wrap.append(makeTile('tasks','Barista Tasks','Morning & evening checklist',icons.tasks,()=>location.assign(taskURL),true));root.append(wrap);
+  wrap.append(makeTile('tasks','Barista Tasks','Morning & evening checklist',icons.tasks,()=>openTaskPicker(),true));root.append(wrap);
  }else if(id==='shift'){
   const wrap=document.createElement('div');wrap.className='split-home-tile split-shop';
   const shop=makeTile('shift','Open / Close Shop','Shop status',icons.shop,()=>nav('shift','Open / Close Shop'),true);
@@ -99,6 +100,24 @@ for(const [id,title,desc,icon] of APPS){
  const label=document.createElement('label');label.textContent=title;
  const input=document.createElement('input');input.type='url';input.name=id;input.placeholder='https://your-domain/your-app/';label.append(input);document.getElementById('fields').append(label);
 }
+const personColors={james:['#95b9ed','#173d73'],john:['#83cfa0','#174c2d'],jv:['#bd9cdd','#50306f'],khenn:['#e9bd75','#66430b'],kurty:['#80c5be','#164e48'],mark:['#ef9a91','#702721'],zora:['#e9a8cb','#813759']};
+async function openTaskPicker(){
+ const dlg=document.getElementById('taskPicker'),host=document.getElementById('taskPeople'),status=document.getElementById('taskPickerStatus');
+ host.replaceChildren();status.textContent='Loading baristas…';dlg.showModal();
+ try{
+  const roster=await KBRCloud.rpc('kbr_clock_roster',{});
+  if(!roster?.length)throw Error('No active baristas found. Sign in to the Home Screen.');
+  for(const worker of roster){
+   const button=document.createElement('button');button.type='button';button.className='task-person';
+   const [bg,fg]=personColors[String(worker.name||'').toLowerCase().split(' ')[0]]||['#eadbc9','#503827'];
+   button.style.background=bg;button.style.color=fg;button.textContent=worker.name;
+   button.onclick=()=>{const url=new URL(taskURL);url.searchParams.set('worker',worker.id);location.assign(url.href);};
+   host.append(button);
+  }
+  status.textContent='Choose the person on duty.';
+ }catch(e){status.textContent=e.message||String(e);}
+}
+document.getElementById('closeTaskPicker').onclick=()=>document.getElementById('taskPicker').close();
 async function refreshShopIcon(){try{if(!KBRCloud.session())return;const data=await KBRCloud.rows('/rest/v1/kbr_shifts?select=status,closed_at&order=opened_at.desc&limit=1');const open=!!data[0]&&!data[0].closed_at&&data[0].status==='open';const tile=document.getElementById('homeShopButton');if(!tile)return;const name=tile.querySelector('strong');name.textContent=open?'Close Shop':'Open Shop';tile.classList.toggle('shop-is-open',open);}catch{}}
 refreshShopIcon();
 const dialog=document.getElementById('settings'),form=document.getElementById('linksForm');document.getElementById('configure').onclick=()=>{for(const [id]of APPS)form.elements[id].value=links[id];document.getElementById('error').textContent='';dialog.showModal()};document.getElementById('cancel').onclick=()=>dialog.close();document.getElementById('restoreDefaults').onclick=()=>{for(const [id]of APPS)form.elements[id].value=DEFAULT_LINKS[id];document.getElementById('error').textContent='Default links restored. Press Save links to apply.';};form.onsubmit=event=>{event.preventDefault();const next={};for(const [id,title]of APPS){const value=form.elements[id].value.trim();if(value&&!validLink(value)){document.getElementById('error').textContent='Enter a valid HTTP or HTTPS address for '+title+'.';return}next[id]=value||DEFAULT_LINKS[id]}try{localStorage.setItem(KEY,JSON.stringify(next));links=next;dialog.close();document.getElementById('notice').textContent='App links saved.'}catch{document.getElementById('error').textContent='This browser could not save your links. Please allow browser storage and try again.'}};
