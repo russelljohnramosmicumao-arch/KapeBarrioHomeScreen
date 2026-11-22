@@ -120,6 +120,8 @@ $('addTask').onclick=()=>{
 for(const s of ['morning','evening'])$(s).onclick=()=>{shift=s;show();};
 $('refresh').onclick=async()=>{try{await snapshot();say('Tasks refreshed.');}catch(e){say(e.message);}};
 async function init(){if(!KBRCloud.requireLogin())return;try{role=await KBRCloud.role();if(role!=='owner'&&role!=='operator')throw Error('Staff login required.');const roster=await KBRCloud.rpc('kbr_barista_task_roster',{});const worker=(roster||[]).find(w=>w.id===workerId);if(worker){workerName=worker.name;}else{workerId='';workerName='';const picker=document.createElement('div');picker.className='inline-worker-picker';picker.innerHTML='<h2>Who is on duty?</h2><p>Select a barista currently clocked in.</p>';const choices=document.createElement('div');choices.className='worker-choices';for(const w of roster||[]){const b=document.createElement('button');b.textContent=w.name;b.onclick=()=>{const url=new URL(location.href);url.searchParams.set('worker',w.id);location.assign(url.href);};choices.append(b);}if(!roster?.length){const msg=document.createElement('p');msg.textContent='No baristas are clocked in. Please clock in first.';picker.append(msg);}picker.append(choices);$('board').before(picker);$('board').hidden=true;}if(worker)$('board').hidden=false;if(role==='owner')$('ownerPanel').hidden=false;await snapshot();say('');}catch(e){say(e.message);}}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&role)snapshot().catch(e=>say(e.message));});
+window.addEventListener('focus',()=>{if(role)snapshot().catch(e=>say(e.message));});
 init();
 })();
 </script><script src="page-tools.js"></script></body></html>
