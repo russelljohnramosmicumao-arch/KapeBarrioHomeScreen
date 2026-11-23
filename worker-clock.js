@@ -92,9 +92,10 @@ function renderLogin(){
   }
   return;
  }
- host.innerHTML='<section class="clock-pin-stage"><button type="button" class="clock-choose-back" id="changeClockWorker">← Back to Baristas</button>'
+ host.innerHTML='<section class="clock-pin-stage">'
+  +'<div class="clock-pin-left"><button type="button" class="clock-choose-back" id="changeClockWorker">← Back to Baristas</button>'
   +'<div class="clock-pin-identity">'+clockAvatar(worker.photo_url,worker.name,'clock-profile-photo clock-pin-avatar')
-  +'<div><h2>'+escapeHtml(clockGalleryName(worker.name))+'</h2><p>'+escapeHtml(worker.position||'Barista')+'</p></div></div>'
+  +'<div class="clock-pin-worker-info"><h2>'+escapeHtml(clockGalleryName(worker.name))+'</h2><p>'+escapeHtml(worker.position||'Barista')+'</p></div></div></div>'
   +'<form id="workerClockForm" class="worker-pin-form">'
   +'<input type="hidden" name="username" value="'+escapeHtml(worker.username)+'">'
   +'<input name="pin" type="hidden" autocomplete="off" value="">'
