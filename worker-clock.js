@@ -75,7 +75,7 @@ function renderLogin(){
  const worker=workers.find(w=>w.username===selected);
  if(!worker){
   selected='';
-  host.innerHTML='<section class="clock-worker-selection"><h2>Who is clocking in or out?</h2><p>Tap your picture to continue.</p><div class="clock-worker-gallery">'
+  host.innerHTML='<section class="clock-worker-selection"><div class="clock-worker-gallery">'
    +orderedClockWorkers().map(w=>'<button type="button" class="clock-worker-card" data-worker-id="'+escapeHtml(w.id)+'" aria-label="Select '+escapeHtml(clockGalleryName(w.name))+', '+escapeHtml(w.position||'Barista')+'">'
      +clockAvatar(w.photo_url,clockGalleryName(w.name),'clock-profile-photo clock-gallery-avatar')
      +'<strong>'+escapeHtml(clockGalleryName(w.name))+'</strong>'
