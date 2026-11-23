@@ -63,14 +63,23 @@ function render(){signOut.hidden=!profile;signOut.disabled=busy;
 if(!profile){renderLogin();return;}
 const record=active(),closed=latestClosed();host.innerHTML=`<div class="clock-panes"><section class="barista-order-card clock-worker-profile">${clockAvatar(profile.photo_url,profile.name)}<h2>${escapeHtml(profile.name)}</h2><p>@${escapeHtml(profile.username)}</p><p>${escapeHtml(profile.position||'Barista')}</p><p class="worker-status">${record?'Clocked in':'Logged in · not clocked in'}</p><p>${record?'Your shift continues while you are signed out of this screen.':'Press Clock In when you are ready to start working.'}</p></section><section class="barista-order-card"><p>${record?'Current shift · started '+escapeHtml(formatTime(record.clocked_in_at)):closed?'Last shift · ended '+escapeHtml(formatTime(closed.clocked_out_at)):'Ready to start your shift'}</p><h1 id="workerElapsed"></h1><button type="button" id="attendanceAction" class="${record?'clock-red':'clock-green'}" ${busy||!attendanceReady?'disabled':''}>${attendanceReady?(record?'Clock Out':'Clock In'):'Loading attendance…'}</button><p class="clock-action-message" id="attendanceMessage" role="status"></p></section></div>`;
 document.getElementById('attendanceAction').onclick=()=>changeAttendance(record?'out':'in');syncElapsedTicker();}
+function clockGalleryName(name){
+ return String(name||'').trim().toLowerCase()==='kurty'?'Kurt':name;
+}
+function orderedClockWorkers(){
+ const order=['james','mark','jv','khenn','kurt','kurty'];
+ const rank=w=>{const n=String(w.name||'').trim().toLowerCase();const i=order.indexOf(n);return i<0?order.length:i;};
+ return [...workers].sort((a,b)=>rank(a)-rank(b)||String(a.name||'').localeCompare(String(b.name||'')));
+}
 function renderLogin(){
  const worker=workers.find(w=>w.username===selected);
  if(!worker){
   selected='';
   host.innerHTML='<section class="clock-worker-selection"><h2>Who is clocking in or out?</h2><p>Tap your picture to continue.</p><div class="clock-worker-gallery">'
-   +workers.map(w=>'<button type="button" class="clock-worker-card" data-worker-id="'+escapeHtml(w.id)+'" aria-label="Select '+escapeHtml(w.name)+'">'
-     +clockAvatar(w.photo_url,w.name,'clock-profile-photo clock-gallery-avatar')
-     +'<strong>'+escapeHtml(w.name)+'</strong>'
+   +orderedClockWorkers().map(w=>'<button type="button" class="clock-worker-card" data-worker-id="'+escapeHtml(w.id)+'" aria-label="Select '+escapeHtml(clockGalleryName(w.name))+', '+escapeHtml(w.position||'Barista')+'">'
+     +clockAvatar(w.photo_url,clockGalleryName(w.name),'clock-profile-photo clock-gallery-avatar')
+     +'<strong>'+escapeHtml(clockGalleryName(w.name))+'</strong>'
+     +'<small class="clock-worker-position">'+escapeHtml(w.position||'Barista')+'</small>'
      +'</button>').join('')
    +'</div></section>';
   for(const button of host.querySelectorAll('[data-worker-id]')){
@@ -85,7 +94,7 @@ function renderLogin(){
  }
  host.innerHTML='<section class="clock-pin-stage"><button type="button" class="clock-choose-back" id="changeClockWorker">← Back to Baristas</button>'
   +'<div class="clock-pin-identity">'+clockAvatar(worker.photo_url,worker.name,'clock-profile-photo clock-pin-avatar')
-  +'<div><h2>'+escapeHtml(worker.name)+'</h2><p>'+escapeHtml(worker.position||'Barista')+'</p></div></div>'
+  +'<div><h2>'+escapeHtml(clockGalleryName(worker.name))+'</h2><p>'+escapeHtml(worker.position||'Barista')+'</p></div></div>'
   +'<form id="workerClockForm" class="worker-pin-form">'
   +'<input type="hidden" name="username" value="'+escapeHtml(worker.username)+'">'
   +'<input name="pin" type="hidden" autocomplete="off" value="">'
