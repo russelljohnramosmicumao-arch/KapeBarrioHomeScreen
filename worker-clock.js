@@ -25,7 +25,7 @@ function mountWorkerLoginPin(form){
  }
  pad.append(action);
  form.addEventListener('submit',event=>{
-  if(!/^\\d{4,10}$/.test(input.value)){
+  if(!/^\d{4,10}$/.test(input.value)){
    event.preventDefault();event.stopImmediatePropagation();
    error.textContent='Enter your Drink PIN to continue.';
    display.classList.add('invalid');
@@ -97,7 +97,7 @@ function renderLogin(){
  form.onsubmit=async event=>{
   event.preventDefault();if(busy)return;
   const username=form.elements.username.value,pin=form.elements.pin.value;
-  if(!/^\\d{4,10}$/.test(pin)){form.querySelector('[data-clock-error]').textContent='Enter your Drink PIN to continue.';return;}
+  if(!/^\d{4,10}$/.test(pin)){form.querySelector('[data-clock-error]').textContent='Enter your Drink PIN to continue.';return;}
   busy=true;form.querySelector('button[type=submit]').disabled=true;
   try{
    const result=await KBRCloud.rpc('kbr_login_worker',{p_username:username,p_pin:pin});
