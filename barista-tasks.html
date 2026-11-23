@@ -60,6 +60,9 @@ body.evening-mode .task-edit-trigger{background:#303030;color:#fff;border-color:
 #taskDialog .day-checks input{width:17px;height:17px}
 @media(max-width:380px){#taskDialog .day-checks{grid-template-columns:repeat(3,minmax(0,1fr))}}
 
+.task-uncheck{min-height:29px;padding:4px 10px;border:1px solid #c9a68c;border-radius:9px;background:#fff9f1;color:#865235;font-size:12px;font-weight:800;white-space:nowrap}
+.task-uncheck:hover{border-color:#af6449;background:#ffede4}
+body.evening-mode .task-uncheck{color:#fff;background:#402d29;border-color:#976c5e}
 /* On-duty workers claim each task directly; no separate worker-selection popup. */
 .task{grid-template-columns:76px minmax(0,1fr) 104px}
 .task-claim{grid-column:2/4;display:flex;align-items:center;flex-wrap:wrap;gap:9px;margin:4px 0 0;padding:8px 0 2px}
@@ -146,6 +149,7 @@ function show(){
     +(t.action_key==='inventory'?'<div class="muted task-app-note">Tap Inventory to open the app. Select your photo after completing the count.</div>':'')
     +'</div></div><div class="task-end"><div class="time '+(overdue?'late':'')+'">'+escapeHtml(time)+(overdue?'<div>Overdue</div>':'')+'</div>'
     +(role==='owner'?'<button class="task-edit-trigger" data-edit-task="'+t.id+'" title="Edit or delete task" aria-label="Edit or delete '+escapeHtml(t.title)+'">✎ Edit</button>':'')
+    +(t.completed_at&&shopOpen?'<button type="button" class="task-uncheck" data-uncheck-task="'+t.id+'" '+(busy?'disabled':'')+' aria-label="Undo completion of '+escapeHtml(t.title)+'">↶ Undo</button>':'')
     +'</div>'+claimButtons(t)+'</div>';
  };
  for(const group of groups){
@@ -164,6 +168,7 @@ function show(){
  $('list').innerHTML=pieces.length?pieces.join(''):'<p class="muted">No tasks set for this shift yet.</p>';
  $('list').querySelectorAll('[data-task][data-worker]').forEach(b=>b.onclick=()=>check(Number(b.dataset.task),b.dataset.worker));
  $('list').querySelectorAll('[data-edit-task]').forEach(b=>b.onclick=()=>editTask(Number(b.dataset.editTask)));
+ $('list').querySelectorAll('[data-uncheck-task]').forEach(b=>b.onclick=()=>uncheck(Number(b.dataset.uncheckTask)));
 }
 async function snapshot(){
  const [result,roster]=await Promise.all([KBRCloud.rpc('kbr_barista_tasks_snapshot',{}),KBRCloud.rpc('kbr_barista_task_roster',{})]);
@@ -181,6 +186,19 @@ async function check(id,worker){
   if(result?.error)throw Error(result.error);
   await snapshot();
   say('Task completed by '+(result.completed_by||person.name)+'.');
+ }catch(e){say(e.message||String(e));await snapshot().catch(()=>{});}
+ finally{busy=false;show();}
+}
+async function uncheck(id){
+ if(busy||!shopOpen)return;
+ const task=all.find(t=>t.id===id&&t.completed_at);
+ if(!task)return;
+ if(!confirm('Undo completion of "'+task.title+'"?\n\nThis will move the task back to the unfinished list so it can be claimed again.'))return;
+ busy=true;say('Undoing completion…');show();
+ try{
+  const result=await KBRCloud.rpc('kbr_barista_task_uncheck',{p_task:id});
+  if(!result?.ok)throw Error(result?.error||'Unable to undo this task.');
+  await snapshot();say('Task returned to unfinished. Previous completion remains in the audit history.');
  }catch(e){say(e.message||String(e));await snapshot().catch(()=>{});}
  finally{busy=false;show();}
 }
