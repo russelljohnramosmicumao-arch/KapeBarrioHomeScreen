@@ -61,8 +61,14 @@ timer();
 }
 function render(){signOut.hidden=!profile;signOut.disabled=busy;
 if(!profile){renderLogin();return;}
-const record=active(),closed=latestClosed();host.innerHTML=`<div class="clock-panes"><section class="barista-order-card clock-worker-profile">${clockAvatar(profile.photo_url,profile.name)}<h2>${escapeHtml(profile.name)}</h2><p>@${escapeHtml(profile.username)}</p><p>${escapeHtml(profile.position||'Barista')}</p><p class="worker-status">${record?'Clocked in':'Logged in · not clocked in'}</p><p>${record?'Your shift continues while you are signed out of this screen.':'Press Clock In when you are ready to start working.'}</p></section><section class="barista-order-card"><p>${record?'Current shift · started '+escapeHtml(formatTime(record.clocked_in_at)):closed?'Last shift · ended '+escapeHtml(formatTime(closed.clocked_out_at)):'Ready to start your shift'}</p><h1 id="workerElapsed"></h1><button type="button" id="attendanceAction" class="${record?'clock-red':'clock-green'}" ${busy||!attendanceReady?'disabled':''}>${attendanceReady?(record?'Clock Out':'Clock In'):'Loading attendance…'}</button><p class="clock-action-message" id="attendanceMessage" role="status"></p></section></div>`;
+const record=active(),closed=latestClosed();host.innerHTML=`<div class="clock-panes"><section class="barista-order-card clock-worker-profile">${clockAvatar(profile.photo_url,profile.name)}<h2>${escapeHtml(profile.name)}</h2><p>@${escapeHtml(profile.username)}</p><p>${escapeHtml(clockPositionLabel(profile))}</p><p class="worker-status">${record?'Clocked in':'Logged in · not clocked in'}</p><p>${record?'Your shift continues while you are signed out of this screen.':'Press Clock In when you are ready to start working.'}</p></section><section class="barista-order-card"><p>${record?'Current shift · started '+escapeHtml(formatTime(record.clocked_in_at)):closed?'Last shift · ended '+escapeHtml(formatTime(closed.clocked_out_at)):'Ready to start your shift'}</p><h1 id="workerElapsed"></h1><button type="button" id="attendanceAction" class="${record?'clock-red':'clock-green'}" ${busy||!attendanceReady?'disabled':''}>${attendanceReady?(record?'Clock Out':'Clock In'):'Loading attendance…'}</button><p class="clock-action-message" id="attendanceMessage" role="status"></p></section></div>`;
 document.getElementById('attendanceAction').onclick=()=>changeAttendance(record?'out':'in');syncElapsedTicker();}
+function clockPositionLabel(worker){
+ const primary=String(worker?.position||'Barista').trim();
+ const secondary=String(worker?.secondary_position||'').trim();
+ const extra=secondary.toLowerCase()==='it team'&&primary.toLowerCase()==='owner'?'IT & R&D':secondary;
+ return [primary,extra].filter(Boolean).join(' • ');
+}
 function clockGalleryName(name){
  return String(name||'').trim().toLowerCase()==='kurty'?'Kurt':name;
 }
@@ -76,17 +82,21 @@ function renderLogin(){
  if(!worker){
   selected='';
   host.innerHTML='<section class="clock-worker-selection"><div class="clock-worker-gallery">'
-   +orderedClockWorkers().map(w=>'<button type="button" class="clock-worker-card" data-worker-id="'+escapeHtml(w.id)+'" aria-label="Select '+escapeHtml(clockGalleryName(w.name))+', '+escapeHtml(w.position||'Barista')+'">'
-     +clockAvatar(w.photo_url,clockGalleryName(w.name),'clock-profile-photo clock-gallery-avatar')
-     +'<strong>'+escapeHtml(clockGalleryName(w.name))+'</strong>'
-     +'<small class="clock-worker-position">'+escapeHtml(w.position||'Barista')+'</small>'
-     +'</button>').join('')
+   +orderedClockWorkers().map(w=>w.can_clock!==false
+     ?'<button type="button" class="clock-worker-card" data-worker-id="'+escapeHtml(w.id)+'" aria-label="Select '+escapeHtml(clockGalleryName(w.name))+', '+escapeHtml(clockPositionLabel(w))+'">'
+      +clockAvatar(w.photo_url,clockGalleryName(w.name),'clock-profile-photo clock-gallery-avatar')
+      +'<strong>'+escapeHtml(clockGalleryName(w.name))+'</strong>'
+      +'<small class="clock-worker-position">'+escapeHtml(clockPositionLabel(w))+'</small></button>'
+     :'<div class="clock-worker-card clock-worker-display-only" aria-label="'+escapeHtml(clockGalleryName(w.name))+', '+escapeHtml(clockPositionLabel(w))+', no clock in required">'
+      +clockAvatar(w.photo_url,clockGalleryName(w.name),'clock-profile-photo clock-gallery-avatar')
+      +'<strong>'+escapeHtml(clockGalleryName(w.name))+'</strong>'
+      +'<small class="clock-worker-position">'+escapeHtml(clockPositionLabel(w))+'</small></div>').join('')
    +'</div></section>';
   for(const button of host.querySelectorAll('[data-worker-id]')){
    button.onclick=()=>{
     if(busy)return;
     const found=workers.find(w=>w.id===button.dataset.workerId);
-    if(!found)return;
+    if(!found||found.can_clock===false)return;
     selected=found.username;status.textContent='';render();
    };
   }
@@ -95,7 +105,7 @@ function renderLogin(){
  host.innerHTML='<section class="clock-pin-stage">'
   +'<div class="clock-pin-left"><button type="button" class="clock-choose-back" id="changeClockWorker">← Back to Baristas</button>'
   +'<div class="clock-pin-identity">'+clockAvatar(worker.photo_url,worker.name,'clock-profile-photo clock-pin-avatar')
-  +'<div class="clock-pin-worker-info"><h2>'+escapeHtml(clockGalleryName(worker.name))+'</h2><p>'+escapeHtml(worker.position||'Barista')+'</p></div></div></div>'
+  +'<div class="clock-pin-worker-info"><h2>'+escapeHtml(clockGalleryName(worker.name))+'</h2><p>'+escapeHtml(clockPositionLabel(worker))+'</p></div></div></div>'
   +'<form id="workerClockForm" class="worker-pin-form">'
   +'<input type="hidden" name="username" value="'+escapeHtml(worker.username)+'">'
   +'<input name="pin" type="hidden" autocomplete="off" value="">'
