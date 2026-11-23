@@ -171,15 +171,12 @@ async function action(kind,kitchenConfirmed=false,tasksConfirmed=false){try{awai
       throw Error('Task checklist could not be verified for this shop shift.');
     const remaining=snapshot.tasks.filter(t=>t.active&&(snapshot.is_weekend||t.shift==='evening'||t.shift==='both')&&!t.completed_at);
     if(remaining.length){
-     KBRSyncUI.screen('STOP — Check Barista Tasks',
-       'Have you checked your '+(snapshot.is_weekend?'Weekend':'Evening')+' Tasks?\\n\\n'+remaining.length+' task'+(remaining.length===1?' is':'s are')+' still unfinished.\\nPlease review them before closing the shop.',
-       [['Check the Tasks',()=>{KBRSyncUI.close();location.assign(new URL('barista-tasks.html',location.href).href);}],
-        ['Proceed to Close Shop',()=>{KBRSyncUI.close();action('close',true,true);}]]
+     KBRSyncUI.screen('STOP','',
+       [['Check Tasks',()=>{KBRSyncUI.close();location.assign(new URL('barista-tasks.html',location.href).href);}],
+        ['Proceed',()=>{KBRSyncUI.close();action('close',true,true);}]]
      );
      const box=document.querySelector('#cloudScreen .cloud-box');
-     if(box)box.classList.add('closing-tasks-reminder');
-     const p=box?.querySelector('p');
-     if(p)p.style.whiteSpace='pre-line';
+     if(box){box.classList.add('closing-tasks-reminder');box.querySelector('p')?.remove();}
      return;
     }
    }catch(e){
