@@ -71,7 +71,7 @@ function renderLogin(){
    +workers.map(w=>'<button type="button" class="clock-worker-card" data-worker-id="'+escapeHtml(w.id)+'" aria-label="Select '+escapeHtml(w.name)+'">'
      +clockAvatar(w.photo_url,w.name,'clock-profile-photo clock-gallery-avatar')
      +'<strong>'+escapeHtml(w.name)+'</strong>'
-     +'<small>'+escapeHtml(w.position||'Barista')+'</small></button>').join('')
+     +'</button>').join('')
    +'</div></section>';
   for(const button of host.querySelectorAll('[data-worker-id]')){
    button.onclick=()=>{
