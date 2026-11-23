@@ -72,6 +72,19 @@ function clockPositionLabel(worker){
 function clockGalleryName(name){
  return String(name||'').trim().toLowerCase()==='kurty'?'Kurt':name;
 }
+function clockGalleryNameWithStatus(worker){
+ const name=escapeHtml(clockGalleryName(worker.name));
+ return '<span class="clock-worker-name">'+name
+  +(worker.clocked_in?'<span class="clock-on-duty-check" title="Currently clocked in" aria-label="Currently clocked in">✓</span>':'')
+  +'</span>';
+}
+async function refreshRoster(){
+ if(!KBRCloud.session()||busy)return;
+ const latest=await KBRCloud.rpc('kbr_clock_roster',{});
+ if(!Array.isArray(latest))throw Error('Attendance roster unavailable');
+ workers=latest;
+ if(!profile&&!selected)renderLogin();
+}
 function orderedClockWorkers(){
  const order=['james','mark','jv','khenn','kurt','kurty'];
  const rank=w=>{const n=String(w.name||'').trim().toLowerCase();const i=order.indexOf(n);return i<0?order.length:i;};
@@ -85,11 +98,11 @@ function renderLogin(){
    +orderedClockWorkers().map(w=>w.can_clock!==false
      ?'<button type="button" class="clock-worker-card" data-worker-id="'+escapeHtml(w.id)+'" aria-label="Select '+escapeHtml(clockGalleryName(w.name))+', '+escapeHtml(clockPositionLabel(w))+'">'
       +clockAvatar(w.photo_url,clockGalleryName(w.name),'clock-profile-photo clock-gallery-avatar')
-      +'<strong>'+escapeHtml(clockGalleryName(w.name))+'</strong>'
+      +'<strong>'+clockGalleryNameWithStatus(w)+'</strong>'
       +'<small class="clock-worker-position">'+escapeHtml(clockPositionLabel(w))+'</small></button>'
      :'<div class="clock-worker-card clock-worker-display-only" aria-label="'+escapeHtml(clockGalleryName(w.name))+', '+escapeHtml(clockPositionLabel(w))+', no clock in required">'
       +clockAvatar(w.photo_url,clockGalleryName(w.name),'clock-profile-photo clock-gallery-avatar')
-      +'<strong>'+escapeHtml(clockGalleryName(w.name))+'</strong>'
+      +'<strong>'+clockGalleryNameWithStatus(w)+'</strong>'
       +'<small class="clock-worker-position">'+escapeHtml(clockPositionLabel(w))+'</small></div>').join('')
    +'</div></section>';
   for(const button of host.querySelectorAll('[data-worker-id]')){
@@ -135,14 +148,15 @@ function renderLogin(){
  mountWorkerLoginPin(form);
 }
 async function refresh(force=false){if(!profile||refreshing)return;refreshing=true;const workerId=profile.id;try{const rows=await KBRCloud.request('/rest/v1/kbr_worker_attendance?barista_id=eq.'+encodeURIComponent(workerId)+'&select=*&order=clocked_in_at.desc&limit=20');if(profile?.id!==workerId)return;const next=JSON.stringify(rows);records=rows;attendanceReady=true;if(force||signature!==next){signature=next;render();}timer();KBRCloud.status('Connected · attendance saved; refresh on sign-in and clock actions');}catch(error){KBRCloud.status('Attendance connection unavailable',true);throw error;}finally{refreshing=false;}}
-async function changeAttendance(action){if(!profile||busy||!attendanceReady)return;busy=true;render();try{const result=await KBRCloud.rpc('kbr_clock_worker',{p_username:profile.username,p_pin:sessionPin,p_action:action});if(result.error)throw Error(result.error);await refresh(true);status.textContent=action==='in'?'Clocked in. Your time has started.':'Clocked out. Your earned time is shown.';}
+async function changeAttendance(action){if(!profile||busy||!attendanceReady)return;busy=true;render();try{const result=await KBRCloud.rpc('kbr_clock_worker',{p_username:profile.username,p_pin:sessionPin,p_action:action});if(result.error)throw Error(result.error);await refresh(true);await refreshRoster().catch(()=>{});status.textContent=action==='in'?'Clocked in. Your time has started.':'Clocked out. Your earned time is shown.';}
 catch(error){status.textContent='Attendance change was not confirmed: '+error.message+' Refresh and review your shift before retrying.';}
 finally{busy=false;render();}}
-function signOutWorker(){if(busy)return;profile=null;syncElapsedTicker();sessionPin='';selected='';records=[];signature='';attendanceReady=false;render();status.textContent='Signed out. Any active shift continues until you clock out.';}
+function signOutWorker(){if(busy)return;profile=null;syncElapsedTicker();sessionPin='';selected='';records=[];signature='';attendanceReady=false;render();status.textContent='Signed out. Any active shift continues until you clock out.';refreshRoster().catch(()=>{});}
 signOut.onclick=signOutWorker;
 async function start(){if(!KBRCloud.requireLogin())return;try{if(!['owner','operator'].includes(await KBRCloud.role()))throw Error('Staff login required.');workers=await KBRCloud.rpc('kbr_clock_roster',{});render();if(!started){started=true;
- document.addEventListener('visibilitychange',syncElapsedTicker);
- window.addEventListener('pageshow',syncElapsedTicker);
+ document.addEventListener('visibilitychange',()=>{syncElapsedTicker();if(!document.hidden)refreshRoster().catch(()=>{});});
+ window.addEventListener('pageshow',()=>{syncElapsedTicker();refreshRoster().catch(()=>{});});
+ window.addEventListener('focus',()=>{if(!document.hidden)refreshRoster().catch(()=>{});});
  window.addEventListener('pagehide',()=>{if(elapsedTicker!==null){clearInterval(elapsedTicker);elapsedTicker=null;}});
 }}
 catch(error){host.textContent='Unable to load worker login: '+error.message;const retry=document.createElement('button');retry.textContent='Retry';retry.onclick=start;host.append(retry);}}start();
