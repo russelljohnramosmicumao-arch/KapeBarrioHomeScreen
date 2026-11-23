@@ -25,7 +25,11 @@ body{background:#f5eee5;color:#503827}.barista-order-card{background:#fffaf4;bor
 .clock-worker-selection{position:relative;isolation:isolate;max-width:760px;margin:20px auto;padding:8px 0 24px;text-align:center}.clock-worker-selection:before{content:'';position:absolute;left:calc(100% - 60px);top:0;width:390px;height:570px;z-index:-1;pointer-events:none;background:url('barista-coffee-illustration.svg?v=logo-cup-v2') center / contain no-repeat;opacity:.38}@media(max-width:1050px){.clock-worker-selection:before{left:auto;right:-20px;width:230px;opacity:.12}}
 .clock-worker-selection h2{margin:8px 0;font-size:clamp(24px,4vw,35px);color:#503827}
 .clock-worker-selection>p{margin:0 0 23px;color:#846b55}
-.clock-worker-gallery{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));column-gap:8px;row-gap:10px;align-items:stretch;max-width:465px;margin:0 auto}
+.clock-worker-gallery{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));column-gap:4px;row-gap:10px;align-items:stretch;max-width:465px;margin:0 auto}
+.clock-worker-gallery>.clock-worker-card{grid-column:span 2}
+/* With five workers, center the last two portraits under the first row. */
+.clock-worker-gallery>.clock-worker-card:nth-child(4):nth-last-child(2){grid-column:2/span 2}
+.clock-worker-gallery>.clock-worker-card:nth-child(5):last-child{grid-column:4/span 2}
 .clock-worker-card{display:flex;flex-direction:column;align-items:center;gap:7px;justify-content:center;min-height:151px;padding:8px 4px;border:0;border-radius:14px;background:transparent;box-shadow:none;text-align:center;cursor:pointer;color:inherit;transition:transform .15s}
 .clock-worker-card:hover{background:transparent;transform:translateY(-2px)}
 .clock-worker-card:focus-visible{outline:3px solid #896242;outline-offset:2px;background:transparent}
@@ -41,10 +45,10 @@ body{background:#f5eee5;color:#503827}.barista-order-card{background:#fffaf4;bor
 .clock-pin-stage .worker-pin-form{display:block;margin:auto;max-width:310px}
 .clock-pin-stage .worker-pin-screen{display:flex;align-items:center;justify-content:center;min-height:58px;background:#f4ece3;border:2px solid #cbb59d;border-radius:12px;color:#503827;font:700 29px monospace;letter-spacing:7px;margin:0 0 13px}
 .clock-pin-stage .worker-pin-screen.invalid{border-color:#b83232}
-.clock-pin-stage .worker-pin-pad{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.clock-pin-stage .worker-pin-pad{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px}
 .clock-pin-stage .worker-pin-pad button{min-height:60px;padding:8px;border-radius:12px;border:2px solid #61402d;background:#6b4328;color:#fffaf4;font:700 26px system-ui}
 .clock-pin-stage .worker-pin-pad button[type=submit]{background:#386944;border-color:#255433}
 .clock-pin-stage [data-clock-error]{color:#a22d2d;font-size:13px;min-height:18px;margin:8px 0 0;text-align:center}
-@media(max-width:650px){.clock-worker-gallery{grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.clock-worker-card{min-height:138px;padding:8px 3px}.clock-gallery-avatar{width:80px;height:80px;font-size:25px}.clock-worker-card strong{font-size:15px}.clock-worker-card small{font-size:11px}.clock-pin-stage{padding:14px 12px}.clock-pin-stage .worker-pin-pad button{min-height:55px}}
-@media(max-width:380px){.clock-worker-gallery{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}.clock-gallery-avatar{width:68px;height:68px}.clock-worker-card{padding:8px 2px}}
+@media(max-width:650px){.clock-worker-gallery{grid-template-columns:repeat(6,minmax(0,1fr));gap:4px}.clock-worker-card{min-height:138px;padding:8px 3px}.clock-gallery-avatar{width:80px;height:80px;font-size:25px}.clock-worker-card strong{font-size:15px}.clock-worker-card small{font-size:11px}.clock-pin-stage{padding:14px 12px}.clock-pin-stage .worker-pin-pad button{min-height:55px}}
+@media(max-width:380px){.clock-worker-gallery{grid-template-columns:repeat(6,minmax(0,1fr));gap:3px}.clock-gallery-avatar{width:68px;height:68px}.clock-worker-card{padding:8px 2px}}
 </style><link rel="stylesheet" href="sync.css"><link rel="stylesheet" href="page-tools.css"></head><body><main><header><h2>Clock In / Clock Out</h2><div class="barista-actions" data-worker-controls><button type="button" id="signOutBarista" class="worker-signout" hidden>Sign out</button></div></header><div id="workerClockView">Connecting…</div><p id="clockStatus" role="status"></p></main><script src="sync-config.js"></script><script src="sync-core.js"></script><script src="sync-ui.js"></script><script>const baristaView='shift';const peso=n=>'₱'+(Number(n)||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});const escapeHtml=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));</script><script src="worker-clock.js?v=staff-order-positions-v23"></script><script src="page-tools.js?v=host-home-v26"></script></body></html>
