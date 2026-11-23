@@ -1,5 +1,5 @@
 'use strict';
-const CACHE='kbr-home-portrait-left-pin-right-v26';
+const CACHE='kbr-home-dual-roles-20261123-main';
 const ASSETS=["./apple-touch-icon.png","./apple-touch-icon.png?v=20261117-home","./icons/icon-192.png?v=20261117-home","./icons/icon-512.png?v=20261117-home","./shifts.js?v=tasks-then-kitchen-v20","./icons/shop-closed.png","./icons/shop-open.png","./icons/icon-192.png","./icons/icon-512.png","./manifest.json","./manager-tile.js","./page-clock.js","./","./index.html","./customer-registration.html","./clock-in.html","./barista-tasks.html","./open-end-shift.html","./sync-config.js","./sync-core.js","./sync-core.js?v=usage-sleep-v2","./sync-ui.js","./sync.css?v=cash-pane-v2","./worker-clock.js?v=portrait-left-pin-right-v26","./shop-page.js?v=split-cash-shop-v10","./sync-login.html","./reset-password.html","./reset-password.js","./page-tools.js?v=shop-cache-recovery-20261109","./page-tools.css"];
 self.addEventListener('install',event=>{
   event.waitUntil((async()=>{
