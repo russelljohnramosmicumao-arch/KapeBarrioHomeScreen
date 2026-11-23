@@ -85,11 +85,44 @@ body.evening-mode .task-claim-empty{color:#ddd}
  .task-claim-worker{min-height:43px;padding:4px 9px 4px 4px}
  .task-claim-avatar{width:33px;height:33px}
 }
+
+/* Multi-person task completion: pick faces first, then tap Done on the right. */
+.task.task-multi{display:grid;grid-template-columns:minmax(235px,0.9fr) minmax(180px,1.25fr) 116px;gap:14px;align-items:center;padding:16px 0}
+.task-multi .task-claim{grid-column:1;grid-row:1;display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin:0;padding:0}
+.task-multi .task-claim-label{width:100%;font-size:12px;font-weight:750}
+.task-multi .task-details{grid-column:2;grid-row:1;min-width:0}
+.task-multi .task-end{grid-column:3;grid-row:1;align-items:stretch;justify-items:stretch;gap:8px}
+.task-multi .task-end .time{text-align:right}
+.task-multi .task-claim-worker{min-height:45px;padding:4px 8px 4px 4px;border-radius:13px;gap:5px;max-width:150px;transition:border-color .12s,background .12s,box-shadow .12s}
+.task-multi .task-claim-worker.selected{background:#dfefdf;border:2px solid #28673d;box-shadow:0 0 0 1px #28673d44}
+.task-multi .task-claim-worker.selected .task-claim-name{color:#205936}
+.task-multi .task-claim-avatar{width:34px;height:34px}
+.task-multi .claim-tick{color:#24683d;font-weight:900}
+.task-multi .task-done{min-height:48px;border:1px solid #235632;border-radius:11px;background:#336f46;color:#fff;font-weight:800}
+.task-multi .task-done:disabled{background:#d8e0d6;border-color:#c2cabc;color:#68786c;opacity:1;cursor:not-allowed}
+.task-multi .task-worker-credit{grid-column:1;grid-row:1;display:flex;align-items:center;gap:10px;font-size:12px;color:#28673d;overflow-wrap:anywhere}
+.task-multi .credit-check{font-size:28px}
+.task-multi .task-worker-credit strong{font-size:15px}
+body.evening-mode .task-multi .task-claim-worker.selected{background:#31563d;border-color:#91caaa;color:#fff}
+body.evening-mode .task-multi .task-claim-worker.selected .task-claim-name,body.evening-mode .task-multi .claim-tick{color:#d0f3da}
+body.evening-mode .task-multi .task-done:disabled{background:#444;color:#aaa;border-color:#666}
+body.evening-mode .task-multi .task-worker-credit{color:#c3e9ca}
+@media(max-width:760px){
+ .task.task-multi{grid-template-columns:minmax(0,1fr) 104px;gap:11px}
+ .task-multi .task-claim,.task-multi .task-worker-credit{grid-column:1;grid-row:1}
+ .task-multi .task-details{grid-column:1;grid-row:2}
+ .task-multi .task-end{grid-column:2;grid-row:1/span 2;align-self:center}
+}
+@media(max-width:390px){
+ .task.task-multi{grid-template-columns:minmax(0,1fr) 85px;gap:6px}
+ .task-multi .task-done{font-size:13px;padding:6px 3px}
+ .task-multi .task-claim-worker{max-width:125px}
+}
 </style></head>
 <body><main><header><div><h1>Barista Tasks</h1><div class="muted">Shared daily checklist · Kape’ Bar-Rio</div></div></header>
 <section class="panel" id="board" hidden><div class="summary"><div><strong id="shopDay"></strong><div class="muted" id="selectedWorker">Shared daily checklist</div></div><button id="refresh" type="button">Refresh tasks</button></div>
 <div class="tabs"><button id="morning" class="active"><span aria-hidden="true">☀️</span> Morning</button><button id="evening"><span aria-hidden="true">🌙</span> Evening</button></div>
-<div class="summary"><strong id="shiftName">Morning tasks</strong><div class="actions"><span id="progressText"></span><button id="addTask" type="button" hidden>+ Add task</button></div></div><progress id="progress" max="100" value="0"></progress><div id="list"></div><p class="muted">Tap your photo on a task after completing it. Your name will be recorded on the shared checklist.</p>
+<div class="summary"><strong id="shiftName">Morning tasks</strong><div class="actions"><span id="progressText"></span><button id="addTask" type="button" hidden>+ Add task</button></div></div><progress id="progress" max="100" value="0"></progress><div id="list"></div><p class="muted">Select every barista who worked on a task, then tap Done. Everyone selected receives credit.</p>
 </section>
 <dialog id="taskDialog" aria-labelledby="taskDialogTitle"><form id="taskAddForm"><h2 id="taskDialogTitle">Add task</h2><label>Task description<textarea name="title" required maxlength="180" rows="3" placeholder="What should be done?"></textarea></label><fieldset><legend>Show this task in</legend><label class="task-checkbox"><input type="checkbox" name="morning"> ☀️ Morning Tasks</label><label class="task-checkbox"><input type="checkbox" name="evening"> 🌙 Evening Tasks</label></fieldset><fieldset class="day-schedule"><legend>Repeat on</legend><label class="day-select-label">Days<select id="taskDayPreset" name="dayPreset"><option value="all">Every day</option><option value="weekday">Monday–Friday</option><option value="weekend">Saturday–Sunday only</option><option value="custom">Custom days</option></select></label><div id="customDays" class="day-checks" hidden><label><input type="checkbox" name="day1" value="1"> Mon</label><label><input type="checkbox" name="day2" value="2"> Tue</label><label><input type="checkbox" name="day3" value="3"> Wed</label><label><input type="checkbox" name="day4" value="4"> Thu</label><label><input type="checkbox" name="day5" value="5"> Fri</label><label><input type="checkbox" name="day6" value="6"> Sat</label><label><input type="checkbox" name="day7" value="7"> Sun</label></div></fieldset><label>Section<select name="section"><option value="general">General tasks</option><option value="inside">Inside Shop</option><option value="dining">Dining Area</option><option value="afternoon">Dining Area · 3–5 PM</option><option value="handover">Cash Handover</option><option value="closing">Closing Tasks</option></select></label><div class="time-fields"><label>Start time (optional)<input name="time" type="time"></label><label>End time (optional)<input name="end" type="time"></label></div><p id="taskAddError" role="alert"></p><div class="actions"><button type="button" id="deleteTask" class="delete-task" hidden>Delete task</button><button type="button" id="cancelTask">Cancel</button><button type="submit" class="primary" id="saveTask">Save task</button></div></form></dialog>
 <p id="message" role="status"></p></main>
@@ -98,6 +131,7 @@ body.evening-mode .task-claim-empty{color:#ddd}
 (()=>{'use strict';
 const $=id=>document.getElementById(id);
 let shift='morning',all=[],shopDay='',role='',busy=false,shopOpen=false,isWeekend=false,editingTaskId=null,onDutyWorkers=[];
+const taskSelections=new Map();
 const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','"':'&quot;',"'":'&#39;'}[c]));
 const say=(message='')=>$('message').textContent=message;
 function dateTime(value){return value?new Date(value).toLocaleString('en-PH',{timeZone:'Asia/Manila',hour:'numeric',minute:'2-digit'}):'';}
@@ -108,17 +142,29 @@ function workerAvatar(w){
  const initials=String(w.name||'?').trim().split(/\s+/).slice(0,2).map(x=>x[0]||'').join('').toUpperCase();
  return '<span class="task-claim-avatar">'+(safe?'<img src="'+escapeHtml(src)+'" alt="" loading="lazy" referrerpolicy="no-referrer">':escapeHtml(initials))+'</span>';
 }
+function selectedWorkers(taskId){
+ const chosen=taskSelections.get(Number(taskId))||new Set();
+ return onDutyWorkers.filter(w=>chosen.has(w.id));
+}
 function claimButtons(task){
- if(task.completed_at)return '';
- const isDisabled=busy||!shopOpen;
- return '<div class="task-claim"><span class="task-claim-label">Who completed this task? Tap your picture to mark Done.</span>'
+ if(task.completed_at)return '<div class="task-worker-credit"><span class="credit-check">✓</span><span>Completed by<br><strong>'+escapeHtml(task.completed_by||'Barista')+'</strong></span></div>';
+ const chosen=taskSelections.get(Number(task.id))||new Set();
+ return '<div class="task-claim"><span class="task-claim-label">Select who did it</span>'
   +(onDutyWorkers.length?onDutyWorkers.map(w=>
-   '<button type="button" class="task-claim-worker" data-task="'+task.id+'" data-worker="'+escapeHtml(w.id)+'" '
-    +(isDisabled?'disabled':'')+' aria-label="Mark '+escapeHtml(task.title)+' done by '+escapeHtml(w.name)+'">'
-    +workerAvatar(w)+'<span class="task-claim-name">'+escapeHtml(w.name)+'</span></button>').join('')
-  :'<span class="task-claim-empty">No one is clocked in. Clock in to complete tasks.</span>')
+   '<button type="button" class="task-claim-worker'+(chosen.has(w.id)?' selected':'')+'" data-task="'+task.id+'" data-worker="'+escapeHtml(w.id)+'" '
+    +(busy||!shopOpen?'disabled':'')+' aria-pressed="'+(chosen.has(w.id)?'true':'false')+'" aria-label="Select '+escapeHtml(w.name)+' for '+escapeHtml(task.title)+'">'
+    +workerAvatar(w)+'<span class="task-claim-name">'+escapeHtml(w.name)+'</span>'+(chosen.has(w.id)?'<span class="claim-tick" aria-hidden="true">✓</span>':'')+'</button>').join('')
+   :'<span class="task-claim-empty">No baristas clocked in</span>')
   +'</div>';
 }
+function toggleWorker(taskId,workerId){
+ if(busy||!shopOpen||!onDutyWorkers.some(w=>w.id===workerId))return;
+ const chosen=taskSelections.get(taskId)||new Set();
+ if(chosen.has(workerId))chosen.delete(workerId);else chosen.add(workerId);
+ if(chosen.size)taskSelections.set(taskId,chosen);else taskSelections.delete(taskId);
+ show();
+}
+
 function show(){
  document.body.classList.toggle('evening-mode',isWeekend||shift==='evening');
  $('morning').parentElement.hidden=isWeekend;
@@ -142,15 +188,18 @@ function show(){
    const time=t.due_time?(t.due_end?t.due_time+'–'+t.due_end:t.due_time):'Anytime';
    const inventoryUrl=location.hostname.endsWith('github.io')?'https://russelljohnramosmicumao-arch.github.io/Kapebarrio-inventory-system/':'https://kapebarrio-inventory-system.pages.dev/';
    const description=t.action_key==='inventory'?'<a class="task-app-link" href="'+inventoryUrl+'" target="_blank" rel="noopener noreferrer" title="Open Inventory App">'+escapeHtml(t.title)+' ↗</a>':escapeHtml(t.title);
-   return '<div class="task '+(t.completed_at?'completed':'')+'">'
-    +'<div class="task-check-mark" aria-hidden="true">'+(t.completed_at?'✓':'○')+'</div>'
-    +'<div><div class="task-title">'+description+'</div><div class="task-note">'
+   const hasSelection=selectedWorkers(t.id).length>0;
+   return '<div class="task task-multi'+(t.completed_at?' completed':'')+'">'
+    +claimButtons(t)
+    +'<div class="task-details"><div class="task-title">'+description+'</div><div class="task-note">'
     +(t.completed_at?'✓ '+escapeHtml(t.completed_by||'Completed')+' · '+escapeHtml(dateTime(t.completed_at)):(!shopOpen?'Shop is closed':'Not completed'))
-    +(t.action_key==='inventory'?'<div class="muted task-app-note">Tap Inventory to open the app. Select your photo after completing the count.</div>':'')
-    +'</div></div><div class="task-end"><div class="time '+(overdue?'late':'')+'">'+escapeHtml(time)+(overdue?'<div>Overdue</div>':'')+'</div>'
-    +(role==='owner'?'<button class="task-edit-trigger" data-edit-task="'+t.id+'" title="Edit or delete task" aria-label="Edit or delete '+escapeHtml(t.title)+'">✎ Edit</button>':'')
+    +(t.action_key==='inventory'?'<div class="muted task-app-note">Open Inventory to count stock, then select everyone who helped.</div>':'')
+    +'</div></div><div class="task-end">'
+    +'<div class="time '+(overdue?'late':'')+'">'+escapeHtml(time)+(overdue?'<div>Overdue</div>':'')+'</div>'
+    +(!t.completed_at?'<button type="button" class="task-done" data-done-task="'+t.id+'" '+(!hasSelection||busy||!shopOpen?'disabled':'')+'>✓ Done</button>':'')
     +(t.completed_at&&shopOpen?'<button type="button" class="task-uncheck" data-uncheck-task="'+t.id+'" '+(busy?'disabled':'')+' aria-label="Undo completion of '+escapeHtml(t.title)+'">↶ Undo</button>':'')
-    +'</div>'+claimButtons(t)+'</div>';
+    +(role==='owner'?'<button class="task-edit-trigger" data-edit-task="'+t.id+'" title="Edit or delete task" aria-label="Edit or delete '+escapeHtml(t.title)+'">✎ Edit</button>':'')
+    +'</div></div>';
  };
  for(const group of groups){
    const tasks=ordered(filtered.filter(t=>(t.section||'general')===group&&!t.completed_at));
@@ -166,7 +215,8 @@ function show(){
    pieces.push('</div>');
  }
  $('list').innerHTML=pieces.length?pieces.join(''):'<p class="muted">No tasks set for this shift yet.</p>';
- $('list').querySelectorAll('[data-task][data-worker]').forEach(b=>b.onclick=()=>check(Number(b.dataset.task),b.dataset.worker));
+ $('list').querySelectorAll('[data-task][data-worker]').forEach(b=>b.onclick=()=>toggleWorker(Number(b.dataset.task),b.dataset.worker));
+ $('list').querySelectorAll('[data-done-task]').forEach(b=>b.onclick=()=>check(Number(b.dataset.doneTask)));
  $('list').querySelectorAll('[data-edit-task]').forEach(b=>b.onclick=()=>editTask(Number(b.dataset.editTask)));
  $('list').querySelectorAll('[data-uncheck-task]').forEach(b=>b.onclick=()=>uncheck(Number(b.dataset.uncheckTask)));
 }
@@ -174,21 +224,29 @@ async function snapshot(){
  const [result,roster]=await Promise.all([KBRCloud.rpc('kbr_barista_tasks_snapshot',{}),KBRCloud.rpc('kbr_barista_task_roster',{})]);
  all=result.tasks||[];shopDay=result.shop_day;shopOpen=!!result.shop_open;isWeekend=!!result.is_weekend;
  onDutyWorkers=Array.isArray(roster)?roster:[];
+ const rosterIds=new Set(onDutyWorkers.map(w=>w.id));
+ for(const [id,chosen] of taskSelections){
+  if(!all.some(t=>t.id===id&&!t.completed_at)){taskSelections.delete(id);continue;}
+  for(const worker of chosen)if(!rosterIds.has(worker))chosen.delete(worker);
+  if(!chosen.size)taskSelections.delete(id);
+ }
  show();
 }
-async function check(id,worker){
+async function check(id){
  if(busy)return;
- const person=onDutyWorkers.find(w=>w.id===worker);
- if(!person){say('This barista is no longer on duty. Refresh tasks and try again.');return;}
- busy=true;say('Saving completion for '+person.name+'…');show();
+ const selected=selectedWorkers(id);
+ if(!selected.length){say('Select at least one barista before marking this task Done.');return;}
+ busy=true;say('Saving completion for '+selected.map(w=>w.name).join(' & ')+'…');show();
  try{
-  const result=await KBRCloud.rpc('kbr_barista_task_check_selected',{p_task:id,p_worker:worker});
-  if(result?.error)throw Error(result.error);
+  const result=await KBRCloud.rpc('kbr_barista_task_check_multiple',{p_task:id,p_workers:selected.map(w=>w.id)});
+  if(result?.error||!result?.ok)throw Error(result?.error||'Unable to confirm completion.');
+  taskSelections.delete(id);
   await snapshot();
-  say('Task completed by '+(result.completed_by||person.name)+'.');
+  say('Task completed by '+result.completed_by+'.');
  }catch(e){say(e.message||String(e));await snapshot().catch(()=>{});}
  finally{busy=false;show();}
 }
+
 async function uncheck(id){
  if(busy||!shopOpen)return;
  const task=all.find(t=>t.id===id&&t.completed_at);
