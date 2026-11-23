@@ -134,58 +134,74 @@ async function handoverAction(s){
 }
 async function action(kind,kitchenConfirmed=false,tasksConfirmed=false){try{await loadWorkers();}catch(e){KBRSyncUI.screen('Could not load workers',e.message,[['Back',()=>KBRSyncUI.close()]]);return;}if(saving)return;if(KBRCloud.read(queue)){retry();return;}const s=active();if(kind==='open'&&s){KBRSyncUI.close();render();return;}if(kind!=='open'&&!s){refresh(true);return;}if(kind==='handover'){if(weekendShop(s)){KBRSyncUI.screen('Weekend — No Cash Handover','Cash handover is not used on Saturday or Sunday. The same cashier remains responsible for the drawer until closing.',[['Back',()=>KBRSyncUI.close()]]);return;}await handoverAction(s);return;}if(['cash-in','cash-out'].includes(kind)){cashAction(kind,s);return;}
  if(kind==='close'){
-  try{
-   const food=await KBRCloud.rpc('kbr_kitchen_settlement_snapshot',{p_shift:s.id});
-   if(!food||typeof food!=='object'||food.error)throw Error(food?.error||'Kitchen settlement information unavailable.');
-   const total=Number(food.foodTotal),paid=Number(food.paidToKitchen),remaining=Number(food.remaining);
-   if(![total,paid,remaining].every(Number.isFinite)||total<0||paid<0||remaining<0)throw Error('Invalid kitchen settlement totals. Closing is blocked.');
-   if(remaining>0.005){
-    const message='Pay the kitchen first before closing the shop.\n\n'+
-     'TOTAL KITCHEN FOOD TO PAY\n'+money(remaining);
-    KBRSyncUI.screen('STOP',message,
-     [['Stop and Go Back',()=>KBRSyncUI.close()],['Pay Kitchen & Record Cash Out',()=>cashAction('cash-out',s,remaining)]]);
-    const box=document.querySelector('#cloudScreen .cloud-box');
-    if(box)box.classList.add('kitchen-stop-warning');
-    return;
-   }
-   // Acknowledge kitchen settlement once per active shop shift, but always recheck the balance.
-   const kitchenAcknowledged=()=>{try{return sessionStorage.getItem('kbr-kitchen-reviewed:'+s.id)==='yes';}catch{return false;}};
-   if(!kitchenConfirmed&&!kitchenAcknowledged()){
-    const noFood=total<0.005;
-    KBRSyncUI.screen(noFood?'No Kitchen Food':'Kitchen Payment Complete',
-     noFood?'No kitchen food was sold during this shift. You can proceed to count the closing cash.':
-      'Kitchen food sold: '+money(total)+'\nKitchen paid: '+money(paid)+'\nThere is no remaining kitchen payment. You can proceed to count the closing cash.',
-     [['Back — Do not close',()=>KBRSyncUI.close()],['Continue',()=>{try{sessionStorage.setItem('kbr-kitchen-reviewed:'+s.id,'yes');}catch{} KBRSyncUI.close();action('close',true);}]]);
-    const notice=document.querySelector('#cloudScreen .cloud-box>p');
-    if(notice)notice.style.whiteSpace='pre-line';
-    return;
-   }
-  }catch(e){KBRSyncUI.screen('Unable to verify kitchen settlement','Closing is blocked until the kitchen balance can be checked: '+(e.message||e),[['Back',()=>KBRSyncUI.close()]]);return;}
-  // Check the same active shop shift whose cash drawer is being closed.
-  // This runs only after a successful kitchen settlement check, and is checked again
-  // when the user returns from the task list.
-  if(!tasksConfirmed){
+  // Tasks always come first. An override is scoped to this shop shift and does not complete any tasks.
+  const taskReviewedKey='kbr-closing-tasks-reviewed:'+s.id;
+  let tasksReviewed=false;
+  try{tasksReviewed=sessionStorage.getItem(taskReviewedKey)==='yes';}catch{}
+  if(!tasksConfirmed&&!tasksReviewed){
    try{
     const snapshot=await KBRCloud.rpc('kbr_barista_tasks_snapshot',{});
     if(!snapshot||!Array.isArray(snapshot.tasks)||!snapshot.shop_open||snapshot.shift_id!==s.id)
-      throw Error('Task checklist could not be verified for this shop shift.');
+     throw Error('Task checklist could not be verified for this shop shift.');
     const remaining=snapshot.tasks.filter(t=>t.active&&(snapshot.is_weekend||t.shift==='evening'||t.shift==='both')&&!t.completed_at);
     if(remaining.length){
-     KBRSyncUI.screen('STOP','',
-       [['Check Tasks',()=>{KBRSyncUI.close();location.assign(new URL('barista-tasks.html',location.href).href);}],
-        ['Proceed',()=>{KBRSyncUI.close();action('close',true,true);}]]
-     );
+     KBRSyncUI.screen('STOP','',[
+      ['Check Tasks',()=>{KBRSyncUI.close();location.assign(new URL('barista-tasks.html',location.href).href);}],
+      ['Proceed',()=>{try{sessionStorage.setItem(taskReviewedKey,'yes');}catch{} KBRSyncUI.close();action('close',false,true);}]
+     ]);
      const box=document.querySelector('#cloudScreen .cloud-box');
      if(box){box.classList.add('closing-tasks-reminder');box.querySelector('p')?.remove();}
      return;
     }
    }catch(e){
     KBRSyncUI.screen('Unable to verify barista tasks',
-      'The shop closing checklist could not be checked. Refresh and try again. '+(e.message||e),
-      [['Back — Do not close',()=>KBRSyncUI.close()],['Retry',()=>{KBRSyncUI.close();action('close',true);}]]
-    );
+     'The shop closing checklist could not be checked. Refresh and try again. '+(e.message||e),
+     [['Back — Do not close',()=>KBRSyncUI.close()],['Retry',()=>{KBRSyncUI.close();action('close',false,false);}]]);
     return;
    }
+  }
+  // Kitchen settlement follows tasks. Never silently close with unpaid kitchen food.
+  try{
+   const food=await KBRCloud.rpc('kbr_kitchen_settlement_snapshot',{p_shift:s.id});
+   if(!food||typeof food!=='object'||food.error)throw Error(food?.error||'Kitchen settlement information unavailable.');
+   const total=Number(food.foodTotal),paid=Number(food.paidToKitchen),remaining=Number(food.remaining);
+   if(![total,paid,remaining].every(Number.isFinite)||total<0||paid<0||remaining<0)throw Error('Invalid kitchen settlement totals. Closing is blocked.');
+   if(remaining>0.005){
+    KBRSyncUI.screen('STOP','Give the Kitchen food.',[
+     ['Cash Out',()=>cashAction('cash-out',s,remaining)],
+     ['Proceed',async()=>{
+       const box=document.querySelector('#cloudScreen .cloud-box');
+       const proceed=box?.querySelector('button:last-of-type');
+       if(proceed)proceed.disabled=true;
+       try{
+        const next=await KBRCloud.rpc('kbr_kitchen_settlement_snapshot',{p_shift:s.id});
+        if(!next||next.error||!Number.isFinite(Number(next.remaining)))throw Error(next?.error||'Kitchen settlement could not be verified.');
+        if(Number(next.remaining)>0.005){
+         const error=box?.querySelector('[data-kitchen-error]');
+         if(error)error.textContent='Record the kitchen Cash Out first.';
+         return;
+        }
+        KBRSyncUI.close();action('close',true,true);
+       }catch(e){const error=box?.querySelector('[data-kitchen-error]');if(error)error.textContent=e.message;}
+       finally{if(proceed?.isConnected)proceed.disabled=false;}
+     }]
+    ]);
+    const box=document.querySelector('#cloudScreen .cloud-box');
+    if(box){
+     box.classList.add('kitchen-stop-warning');
+     const p=box.querySelector('p');
+     if(p){
+      p.textContent='Give the Kitchen food.';
+      const amount=document.createElement('strong');amount.className='kitchen-stop-amount';amount.textContent=money(remaining);
+      p.after(amount);
+     }
+     const error=document.createElement('small');error.dataset.kitchenError='';error.setAttribute('role','status');error.className='kitchen-stop-error';box.append(error);
+    }
+    return;
+   }
+  }catch(e){
+   KBRSyncUI.screen('Unable to verify kitchen settlement','Closing is blocked until the kitchen balance can be checked: '+(e.message||e),[['Back',()=>KBRSyncUI.close()]]);
+   return;
   }
  }
 
