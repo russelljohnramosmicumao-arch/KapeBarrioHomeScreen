@@ -7,4 +7,49 @@
 
 /* Compact coffee palette for attendance controls. */
 body{background:#f5eee5;color:#503827}.barista-order-card{background:#fffaf4;border-color:#987353;padding:18px}.clock-panes h2,.clock-panes h3,#workerElapsed{color:#503827}.clock-panes input,.clock-panes select{border-color:#ac8a6b;background:#fffdf9}.clock-panes{gap:18px}.clock-panes button.clock-green,.count-keypad button{background:#795236;border:2px solid #4b301f;color:#fffaf4}.clock-panes button.clock-red,.worker-signout{background:#4f3425;border:2px solid #322015;color:#fffaf4}.clock-panes button.clock-green,.clock-panes button.clock-red,.worker-signout{min-height:42px;padding:8px 18px;font-size:14px;border-radius:10px}.count-keypad{width:100%;max-width:280px;margin:12px auto;gap:7px}.count-keypad button{min-height:44px;padding:7px;font-size:18px;border-radius:10px}.count-keypad button[data-clock-key="Clear"],.count-keypad button[data-clock-key="⌫"]{background:#ddc5a9;border-color:#8e6848;color:#4b301f;font-size:14px}.count-keypad button:hover,.clock-panes button.clock-green:hover{background:#5c3b26}.clock-panes button.clock-red:hover,.worker-signout:hover{background:#382318}.count-keypad button[data-clock-key="Clear"]:hover,.count-keypad button[data-clock-key="⌫"]:hover{background:#cbb08f}button:focus-visible{outline:3px solid #b8884d;outline-offset:3px}button:active{transform:translateY(1px)}@media(max-width:500px){.barista-order-card{padding:14px}.count-keypad button{min-height:44px}}
-</style><link rel="stylesheet" href="sync.css"><link rel="stylesheet" href="page-tools.css"></head><body><main><header><h2>Clock In / Clock Out</h2><div class="barista-actions" data-worker-controls><button type="button" id="signOutBarista" class="worker-signout" hidden>Sign out</button></div></header><div id="workerClockView">Connecting…</div><p id="clockStatus" role="status"></p></main><script src="sync-config.js"></script><script src="sync-core.js"></script><script src="sync-ui.js"></script><script>const baristaView='shift';const peso=n=>'₱'+(Number(n)||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});const escapeHtml=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));</script><script src="worker-clock.js?v=elapsed-local-nov4-v3"></script><script src="page-tools.js"></script></body></html>
+
+/* Personalized barista profile on Clock In / Clock Out. */
+.clock-worker-profile{text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+.clock-worker-profile h2{font-size:clamp(24px,4vw,34px);margin:8px 0 0}
+.clock-worker-profile p{margin:4px 0}
+.clock-profile-photo{display:inline-flex;width:150px;height:150px;flex:none;align-items:center;justify-content:center;overflow:hidden;border-radius:50%;border:4px solid #896242;background:#e5d1b9;color:#64432e;font-size:44px;font-weight:800;box-shadow:0 5px 15px #6b432827}
+.clock-profile-photo img{width:100%;height:100%;object-fit:cover;display:block}
+.worker-login-profile{display:flex;gap:13px;align-items:center;justify-content:center;margin:12px auto;min-height:92px;text-align:left}
+.worker-login-profile strong,.worker-login-profile small{display:block}
+.worker-login-profile small{margin-top:4px;color:#746453}
+.clock-photo-picker{width:82px;height:82px;font-size:26px;border-width:3px}
+.clock-profile-placeholder{font-size:14px;color:#806850}
+@media(max-width:500px){.clock-profile-photo{width:126px;height:126px;font-size:34px}.clock-photo-picker{width:75px;height:75px;font-size:25px}}
+
+/* Two-step attendance login: visual worker gallery, then private numeric PIN. */
+.clock-worker-selection{position:relative;isolation:isolate;max-width:760px;margin:20px auto;padding:8px 0 24px;text-align:center}.clock-worker-selection:before{content:'';position:absolute;left:calc(100% - 60px);top:0;width:390px;height:570px;z-index:-1;pointer-events:none;background:url('barista-coffee-illustration.svg?v=logo-cup-v2') center / contain no-repeat;opacity:.38}@media(max-width:1050px){.clock-worker-selection:before{left:auto;right:-20px;width:230px;opacity:.12}}
+.clock-worker-selection h2{margin:8px 0;font-size:clamp(24px,4vw,35px);color:#503827}
+.clock-worker-selection>p{margin:0 0 23px;color:#846b55}
+.clock-worker-gallery{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));column-gap:4px;row-gap:10px;align-items:stretch;max-width:465px;margin:0 auto}
+.clock-worker-gallery>.clock-worker-card{grid-column:span 2}
+/* With five workers, center the last two portraits under the first row. */
+.clock-worker-gallery>.clock-worker-card:nth-child(4):nth-last-child(2){grid-column:2/span 2}
+.clock-worker-gallery>.clock-worker-card:nth-child(5):last-child{grid-column:4/span 2}
+.clock-worker-card{display:flex;flex-direction:column;align-items:center;gap:7px;justify-content:center;min-height:151px;padding:8px 4px;border:0;border-radius:14px;background:transparent;box-shadow:none;text-align:center;cursor:pointer;color:inherit;transition:transform .15s}
+.clock-worker-card:hover{background:transparent;transform:translateY(-2px)}
+.clock-worker-card:focus-visible{outline:3px solid #896242;outline-offset:2px;background:transparent}
+.clock-worker-card strong{font-size:19px;line-height:1.2;color:#503827;overflow-wrap:anywhere}
+.clock-worker-card small{font-size:12px;color:#806b58;line-height:1.25;max-width:100%;min-height:17px;text-align:center}
+.clock-gallery-avatar{width:112px;height:112px;border-width:3px;font-size:32px;pointer-events:none}
+.clock-pin-stage{display:grid;grid-template-columns:minmax(210px,.9fr) minmax(275px,1.1fr);align-items:center;gap:28px;max-width:760px;margin:25px auto;padding:26px 30px;background:#fffaf4;border:2px solid #cbb59d;border-radius:24px}
+.clock-choose-back{display:block;margin-bottom:16px;padding:7px 10px;border:0;background:transparent;color:#6b4328;font-size:14px;font-weight:700;text-align:left}
+.clock-pin-left{display:flex;flex-direction:column;align-self:stretch;justify-content:flex-start;min-width:0}
+.clock-pin-identity{display:flex;flex:1;flex-direction:column;align-items:center;justify-content:center;gap:15px;margin:0 auto 34px;text-align:center}
+.clock-pin-identity h2{font-size:clamp(25px,3vw,31px);margin:0 0 5px}
+.clock-pin-identity p{margin:0;color:#806b58;font-size:14px}
+.clock-pin-avatar{width:clamp(150px,17vw,192px);height:clamp(150px,17vw,192px);border-width:5px;font-size:48px;box-shadow:0 7px 24px #5038272c}
+.clock-pin-stage .worker-pin-form{display:block;margin:0 auto;width:100%;max-width:320px;min-width:0}
+.clock-pin-stage .worker-pin-screen{display:flex;align-items:center;justify-content:center;min-height:58px;background:#f4ece3;border:2px solid #cbb59d;border-radius:12px;color:#503827;font:700 29px monospace;letter-spacing:7px;margin:0 0 13px}
+.clock-pin-stage .worker-pin-screen.invalid{border-color:#b83232}
+.clock-pin-stage .worker-pin-pad{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.clock-pin-stage .worker-pin-pad button{min-height:60px;padding:8px;border-radius:12px;border:2px solid #61402d;background:#6b4328;color:#fffaf4;font:700 26px system-ui}
+.clock-pin-stage .worker-pin-pad button[type=submit]{background:#386944;border-color:#255433}
+.clock-pin-stage [data-clock-error]{color:#a22d2d;font-size:13px;min-height:18px;margin:8px 0 0;text-align:center}
+@media(max-width:650px){.clock-pin-stage{max-width:420px;grid-template-columns:1fr;gap:8px;padding:16px 15px 23px}.clock-pin-identity{margin:4px auto 12px;gap:10px}.clock-pin-avatar{width:136px;height:136px;font-size:36px}.clock-pin-left{align-self:auto}.clock-worker-gallery{grid-template-columns:repeat(6,minmax(0,1fr));gap:4px}.clock-worker-card{min-height:138px;padding:8px 3px}.clock-gallery-avatar{width:80px;height:80px;font-size:25px}.clock-worker-card strong{font-size:15px}.clock-worker-card small{font-size:11px}.clock-pin-stage .worker-pin-pad button{min-height:55px}}
+@media(max-width:380px){.clock-worker-gallery{grid-template-columns:repeat(6,minmax(0,1fr));gap:3px}.clock-gallery-avatar{width:68px;height:68px}.clock-worker-card{padding:8px 2px}}
+</style><link rel="stylesheet" href="sync.css"><link rel="stylesheet" href="page-tools.css"></head><body><main><header><h2>Clock In / Clock Out</h2><div class="barista-actions" data-worker-controls><button type="button" id="signOutBarista" class="worker-signout" hidden>Sign out</button></div></header><div id="workerClockView">Connecting…</div><p id="clockStatus" role="status"></p></main><script src="sync-config.js"></script><script src="sync-core.js"></script><script src="sync-ui.js"></script><script>const baristaView='shift';const peso=n=>'₱'+(Number(n)||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});const escapeHtml=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));</script><script src="worker-clock.js?v=dual-positions-nov23-v27"></script><script src="page-tools.js?v=host-home-v26"></script></body></html>
