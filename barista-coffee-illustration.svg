@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 620" role="img" aria-label="Barista wearing a brown apron drinking coffee">
+<g stroke="#67432f" stroke-width="7" stroke-linejoin="round" stroke-linecap="round">
+<path fill="#e5c6a7" stroke="none" d="M110 150q165-155 350 25t-13 336Q185 637 55 407T110 150Z" opacity=".48"/>
+<path fill="#30231e" d="M104 613v-155c0-94 64-134 176-134s180 40 180 134v155Z"/>
+<path fill="#754a33" d="M173 378l-23 235h268l-24-235-49-36-126 0Z"/>
+<path fill="#96684a" d="M173 378l-24 88-6 147h48l27-238m177 3 24 88 6 147h-48l-27-238"/>
+<path fill="#a77b51" d="M234 501h96v70h-96z"/><path fill="none" d="M236 506h92"/>
+<path fill="#e6a883" d="M203 252v104q74 68 148 0V252"/>
+<ellipse cx="278" cy="211" rx="110" ry="135" fill="#edba93"/>
+<path fill="#32231d" d="M172 230q-35-131 74-163 123-49 156 98 4 53-17 74l-11-69-39-35-51 23-49-4-46 39z"/>
+<path fill="#32231d" d="M166 195q-24-87 59-128 38-26 88-13l-30 37 48-34q76 12 72 105-46-34-78-55-86 81-159 88Z"/>
+<path d="M218 242q13-8 27 0m69 0q14-8 27 0" fill="none"/><path d="M258 281q19 15 38 0" fill="none" stroke-width="5"/>
+<path fill="#edba93" d="M372 400q28-73 57-91l39 26q-13 62-57 110z"/>
+<path fill="#f3e5d3" d="M335 291h85v79q0 59-43 59t-42-59z"/>
+<path fill="none" d="M420 309q60-9 52 36t-49 32"/>
+<path d="M344 305h70" stroke="#ae8f76" fill="none"/>
+<path d="M352 345q24 6 51 0" stroke="#d6c1a8" stroke-width="4" fill="none"/>
+<path d="M354 252q-9-19 2-37m20 34q-7-21 4-40m18 40q-9-19 2-37" stroke="#b79a7d" stroke-width="5" fill="none"/>
+</g></svg>
