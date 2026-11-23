@@ -104,8 +104,8 @@ function dateTime(value){return value?new Date(value).toLocaleString('en-PH',{ti
 const photoBase=KBRCloud.config.url+'/storage/v1/object/public/kbr-employee-photos/';
 function workerAvatar(w){
  const src=w.photo_url;
- const safe=typeof src==='string'&&src.startsWith(photoBase)&&!/[<>"'\\s]/.test(src);
- const initials=String(w.name||'?').trim().split(/\\s+/).slice(0,2).map(x=>x[0]||'').join('').toUpperCase();
+ const safe=typeof src==='string'&&src.startsWith(photoBase)&&!/[<>"'\s]/.test(src);
+ const initials=String(w.name||'?').trim().split(/\s+/).slice(0,2).map(x=>x[0]||'').join('').toUpperCase();
  return '<span class="task-claim-avatar">'+(safe?'<img src="'+escapeHtml(src)+'" alt="" loading="lazy" referrerpolicy="no-referrer">':escapeHtml(initials))+'</span>';
 }
 function claimButtons(task){
