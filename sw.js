@@ -1,12 +1,12 @@
 'use strict';
-const CACHE='kbr-home-employee-photos-v19';
-const ASSETS=["./apple-touch-icon.png","./apple-touch-icon.png?v=20261117-home","./icons/icon-192.png?v=20261117-home","./icons/icon-512.png?v=20261117-home","./shifts.js?v=simple-closing-stop-v18","./icons/shop-closed.png","./icons/shop-open.png","./icons/icon-192.png","./icons/icon-512.png","./manifest.json","./manager-tile.js","./page-clock.js","./","./index.html","./customer-registration.html","./clock-in.html","./barista-tasks.html","./open-end-shift.html","./sync-config.js","./sync-core.js","./sync-core.js?v=usage-sleep-v2","./sync-ui.js","./sync.css?v=cash-pane-v2","./worker-clock.js?v=employee-photos-v19","./shop-page.js?v=split-cash-shop-v10","./sync-login.html","./reset-password.html","./reset-password.js","./page-tools.js?v=shop-cache-recovery-20261109","./page-tools.css"];
+const CACHE='kbr-home-tasks-then-kitchen-v20';
+const ASSETS=["./apple-touch-icon.png","./apple-touch-icon.png?v=20261117-home","./icons/icon-192.png?v=20261117-home","./icons/icon-512.png?v=20261117-home","./shifts.js?v=tasks-then-kitchen-v20","./icons/shop-closed.png","./icons/shop-open.png","./icons/icon-192.png","./icons/icon-512.png","./manifest.json","./manager-tile.js","./page-clock.js","./","./index.html","./customer-registration.html","./clock-in.html","./barista-tasks.html","./open-end-shift.html","./sync-config.js","./sync-core.js","./sync-core.js?v=usage-sleep-v2","./sync-ui.js","./sync.css?v=cash-pane-v2","./worker-clock.js?v=employee-photos-v19","./shop-page.js?v=split-cash-shop-v10","./sync-login.html","./reset-password.html","./reset-password.js","./page-tools.js?v=shop-cache-recovery-20261109","./page-tools.css"];
 self.addEventListener('install',event=>{
   event.waitUntil((async()=>{
     const cache=await caches.open(CACHE);
     // A single optional image or offline resource must not abort the entire update.
     const results=await Promise.allSettled(ASSETS.map(asset=>cache.add(new Request(asset,{cache:'reload'}))));
-    const required=['./open-end-shift.html','./shifts.js?v=simple-closing-stop-v18','./shop-page.js?v=split-cash-shop-v10','./page-tools.js?v=shop-cache-recovery-20261109'];
+    const required=['./open-end-shift.html','./shifts.js?v=tasks-then-kitchen-v20','./shop-page.js?v=split-cash-shop-v10','./page-tools.js?v=shop-cache-recovery-20261109'];
     const failed=required.filter(path=>!results[ASSETS.indexOf(path)]||results[ASSETS.indexOf(path)].status!=='fulfilled');
     if(failed.length)throw new Error('Critical shift files could not be cached: '+failed.join(', '));
     // Activate the repair without requiring a working old update button.
