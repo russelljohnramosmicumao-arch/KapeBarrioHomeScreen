@@ -1,16 +1,39 @@
+function clockAvatar(url,name,cls='clock-profile-photo'){
+ const base=KBRCloud.config.url+'/storage/v1/object/public/kbr-employee-photos/';
+ const trusted=typeof url==='string'&&url.startsWith(base)&&!/[<>"'\s]/.test(url);
+ const initials=String(name||'?').trim().split(/\s+/).slice(0,2).map(part=>part[0]||'').join('').toUpperCase();
+ return '<span class="'+cls+'">'+(trusted?'<img src="'+escapeHtml(url)+'" alt="Photo of '+escapeHtml(name)+'" loading="lazy" referrerpolicy="no-referrer">':'<span aria-hidden="true">'+escapeHtml(initials)+'</span>')+'</span>';
+}
 function mountWorkerLoginPin(form){
- const input=form.elements.pin;input.type='hidden';input.readOnly=true;input.inputMode='none';
- const username=form.elements.username;const error=form.querySelector('[data-clock-error]');
- const display=document.createElement('output');display.className='worker-pin-screen';display.setAttribute('aria-label','Drink PIN');
- const pad=document.createElement('div');pad.className='worker-pin-pad';
- const action=form.querySelector('button[type=submit]');action.textContent='✓';action.setAttribute('aria-label','Confirm Drink PIN');
- function show(){display.textContent='*'.repeat(input.value.length);}
- for(const key of ['1','2','3','4','5','6','7','8','9','⌫','0']){const button=document.createElement('button');button.type='button';button.textContent=key;button.setAttribute('aria-label',key==='⌫'?'Delete PIN digit':key);button.onclick=()=>{if(action.disabled)return;input.value=key==='⌫'?input.value.slice(0,-1):input.value.length<6?input.value+key:input.value;error.textContent='';display.classList.remove('invalid');show();};pad.append(button);}
- pad.append(action);form.className='worker-pin-form';form.replaceChildren(username,input,display,pad,error);username.setAttribute('aria-label','Worker name');
- username.addEventListener('change',()=>{input.value='';show();});
- form.addEventListener('submit',event=>{if(!username.value||!/^\d{4,6}$/.test(input.value)){event.preventDefault();event.stopImmediatePropagation();error.textContent='Choose your name and enter your 4–6 digit Drink PIN.';display.classList.add('invalid');}else queueMicrotask(show);},true);
- new MutationObserver(()=>{display.classList.toggle('invalid',!!error.textContent);show();}).observe(error,{childList:true,characterData:true,subtree:true});
- if(!document.getElementById('workerPinStyle')){const style=document.createElement('style');style.id='workerPinStyle';style.textContent='.worker-pin-form{display:block!important;width:min(300px,100%);margin:16px auto;padding:18px;border:1px solid #cbb59d;border-radius:20px;background:#fffaf4}.worker-pin-form select{width:100%;padding:12px;border:1px solid #ac8a6b;border-radius:10px;background:white;font:16px system-ui}.worker-pin-screen{display:flex;align-items:center;justify-content:center;min-height:60px;margin:12px 0;background:#f4ece3;border:2px solid #cbb59d;border-radius:12px;font:700 30px monospace;letter-spacing:7px}.worker-pin-screen.invalid{border-color:#b83232}.worker-pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.worker-pin-pad button{min-height:50px;margin:0;padding:8px!important;border:1px solid #80644b;border-radius:10px;background:#6b4328!important;color:white!important;font:700 23px system-ui!important}.worker-pin-pad button[type=submit]{background:#386944!important}.worker-pin-pad button:disabled{opacity:.5}';document.head.append(style);}show();
+ const input=form.elements.pin;
+ input.type='hidden';input.readOnly=true;input.inputMode='none';
+ const display=form.querySelector('.worker-pin-screen');
+ const pad=form.querySelector('.worker-pin-pad');
+ const error=form.querySelector('[data-clock-error]');
+ const action=form.querySelector('button[type=submit]');
+ function show(){display.textContent='•'.repeat(input.value.length);}
+ for(const key of ['1','2','3','4','5','6','7','8','9','⌫','0']){
+  const button=document.createElement('button');
+  button.type='button';button.textContent=key;
+  button.setAttribute('aria-label',key==='⌫'?'Delete PIN digit':key);
+  button.onclick=()=>{
+   if(action.disabled)return;
+   input.value=key==='⌫'?input.value.slice(0,-1):input.value.length<10?input.value+key:input.value;
+   error.textContent='';display.classList.remove('invalid');show();
+  };
+  pad.append(button);
+ }
+ pad.append(action);
+ form.addEventListener('submit',event=>{
+  if(!/^\d{4,10}$/.test(input.value)){
+   event.preventDefault();event.stopImmediatePropagation();
+   error.textContent='Enter your Drink PIN to continue.';
+   display.classList.add('invalid');
+  }
+ },true);
+ new MutationObserver(()=>{display.classList.toggle('invalid',!!error.textContent);show();})
+  .observe(error,{childList:true,characterData:true,subtree:true});
+ show();
 }
 (()=>{'use strict';
 const host=document.getElementById('workerClockView'),status=document.getElementById('clockStatus'),signOut=document.getElementById('signOutBarista');
@@ -38,15 +61,79 @@ timer();
 }
 function render(){signOut.hidden=!profile;signOut.disabled=busy;
 if(!profile){renderLogin();return;}
-const record=active(),closed=latestClosed();host.innerHTML=`<div class="clock-panes"><section class="barista-order-card"><h2>${escapeHtml(profile.name)}</h2><p>@${escapeHtml(profile.username)}</p><p>${escapeHtml(profile.position||'Barista')}</p><p class="worker-status">${record?'Clocked in':'Logged in · not clocked in'}</p><p>${record?'Your shift continues while you are signed out of this screen.':'Press Clock In when you are ready to start working.'}</p></section><section class="barista-order-card"><p>${record?'Current shift · started '+escapeHtml(formatTime(record.clocked_in_at)):closed?'Last shift · ended '+escapeHtml(formatTime(closed.clocked_out_at)):'Ready to start your shift'}</p><h1 id="workerElapsed"></h1><button type="button" id="attendanceAction" class="${record?'clock-red':'clock-green'}" ${busy||!attendanceReady?'disabled':''}>${attendanceReady?(record?'Clock Out':'Clock In'):'Loading attendance…'}</button><p class="clock-action-message" id="attendanceMessage" role="status"></p></section></div>`;
+const record=active(),closed=latestClosed();host.innerHTML=`<div class="clock-panes"><section class="barista-order-card clock-worker-profile">${clockAvatar(profile.photo_url,profile.name)}<h2>${escapeHtml(profile.name)}</h2><p>@${escapeHtml(profile.username)}</p><p>${escapeHtml(clockPositionLabel(profile))}</p><p class="worker-status">${record?'Clocked in':'Logged in · not clocked in'}</p><p>${record?'Your shift continues while you are signed out of this screen.':'Press Clock In when you are ready to start working.'}</p></section><section class="barista-order-card"><p>${record?'Current shift · started '+escapeHtml(formatTime(record.clocked_in_at)):closed?'Last shift · ended '+escapeHtml(formatTime(closed.clocked_out_at)):'Ready to start your shift'}</p><h1 id="workerElapsed"></h1><button type="button" id="attendanceAction" class="${record?'clock-red':'clock-green'}" ${busy||!attendanceReady?'disabled':''}>${attendanceReady?(record?'Clock Out':'Clock In'):'Loading attendance…'}</button><p class="clock-action-message" id="attendanceMessage" role="status"></p></section></div>`;
 document.getElementById('attendanceAction').onclick=()=>changeAttendance(record?'out':'in');syncElapsedTicker();}
-function renderLogin(){host.innerHTML=`<form id="workerClockForm" class="clock-panes"><section class="barista-order-card"><h3>Log in</h3><label>Username<select name="username" required><option value="">Select active worker</option>${workers.map(w=>`<option value="${escapeHtml(w.username)}" ${selected===w.username?'selected':''}>${escapeHtml(w.name)}</option>`).join('')}</select></label><label>Drink PIN<input name="pin" type="password" inputmode="numeric" pattern="[0-9]{4,6}" minlength="4" maxlength="6" autocomplete="off" required></label><p data-clock-error role="alert"></p><button type="submit" class="clock-green" ${busy?'disabled':''}>Log in</button></section><section class="barista-order-card"><div class="count-keypad">${['1','2','3','4','5','6','7','8','9','Clear','0','⌫'].map(n=>`<button type="button" data-clock-key="${n}" ${busy?'disabled':''}>${n}</button>`).join('')}</div></section></form>`;
-const form=document.getElementById('workerClockForm');form.elements.username.onchange=()=>{selected=form.elements.username.value;form.elements.pin.value='';};
-for(const button of form.querySelectorAll('[data-clock-key]'))button.onclick=()=>{const input=form.elements.pin,key=button.dataset.clockKey;input.value=key==='Clear'?'':key==='⌫'?input.value.slice(0,-1):input.value.length<6?input.value+key:input.value;};
-form.onsubmit=async event=>{event.preventDefault();if(busy)return;const username=form.elements.username.value,pin=form.elements.pin.value;busy=true;form.querySelector('button[type=submit]').disabled=true;form.elements.username.disabled=true;
-try{const result=await KBRCloud.rpc('kbr_login_worker',{p_username:username,p_pin:pin});form.elements.pin.value='';if(result.error)throw Error(result.error);if(!result.profile?.id||!result.profile?.username)throw Error('Worker login was not confirmed.');profile=result.profile;sessionPin=pin;selected='';records=[];signature='';attendanceReady=false;render();await refresh(true);status.textContent=active()?'Logged in. Your existing shift is still running.':'Logged in. Press Clock In to start your shift.';}
-catch(error){if(profile){status.textContent='Logged in, but attendance could not be loaded: '+error.message;}else{form.querySelector('[data-clock-error]').textContent=error.message;form.elements.pin.value='';form.elements.username.disabled=false;form.querySelector('button[type=submit]').disabled=false;}}
-finally{busy=false;if(profile)render();}};mountWorkerLoginPin(form);}
+function clockPositionLabel(worker){
+ const primary=String(worker?.position||'Barista').trim();
+ const secondary=String(worker?.secondary_position||'').trim();
+ const extra=secondary.toLowerCase()==='it team'&&primary.toLowerCase()==='owner'?'IT & R&D':secondary;
+ return [primary,extra].filter(Boolean).join(' • ');
+}
+function clockGalleryName(name){
+ return String(name||'').trim().toLowerCase()==='kurty'?'Kurt':name;
+}
+function orderedClockWorkers(){
+ const order=['james','mark','jv','khenn','kurt','kurty'];
+ const rank=w=>{const n=String(w.name||'').trim().toLowerCase();const i=order.indexOf(n);return i<0?order.length:i;};
+ return [...workers].sort((a,b)=>rank(a)-rank(b)||String(a.name||'').localeCompare(String(b.name||'')));
+}
+function renderLogin(){
+ const worker=workers.find(w=>w.username===selected);
+ if(!worker){
+  selected='';
+  host.innerHTML='<section class="clock-worker-selection"><div class="clock-worker-gallery">'
+   +orderedClockWorkers().map(w=>w.can_clock!==false
+     ?'<button type="button" class="clock-worker-card" data-worker-id="'+escapeHtml(w.id)+'" aria-label="Select '+escapeHtml(clockGalleryName(w.name))+', '+escapeHtml(clockPositionLabel(w))+'">'
+      +clockAvatar(w.photo_url,clockGalleryName(w.name),'clock-profile-photo clock-gallery-avatar')
+      +'<strong>'+escapeHtml(clockGalleryName(w.name))+'</strong>'
+      +'<small class="clock-worker-position">'+escapeHtml(clockPositionLabel(w))+'</small></button>'
+     :'<div class="clock-worker-card clock-worker-display-only" aria-label="'+escapeHtml(clockGalleryName(w.name))+', '+escapeHtml(clockPositionLabel(w))+', no clock in required">'
+      +clockAvatar(w.photo_url,clockGalleryName(w.name),'clock-profile-photo clock-gallery-avatar')
+      +'<strong>'+escapeHtml(clockGalleryName(w.name))+'</strong>'
+      +'<small class="clock-worker-position">'+escapeHtml(clockPositionLabel(w))+'</small></div>').join('')
+   +'</div></section>';
+  for(const button of host.querySelectorAll('[data-worker-id]')){
+   button.onclick=()=>{
+    if(busy)return;
+    const found=workers.find(w=>w.id===button.dataset.workerId);
+    if(!found||found.can_clock===false)return;
+    selected=found.username;status.textContent='';render();
+   };
+  }
+  return;
+ }
+ host.innerHTML='<section class="clock-pin-stage">'
+  +'<div class="clock-pin-left"><button type="button" class="clock-choose-back" id="changeClockWorker">← Back to Baristas</button>'
+  +'<div class="clock-pin-identity">'+clockAvatar(worker.photo_url,worker.name,'clock-profile-photo clock-pin-avatar')
+  +'<div class="clock-pin-worker-info"><h2>'+escapeHtml(clockGalleryName(worker.name))+'</h2><p>'+escapeHtml(clockPositionLabel(worker))+'</p></div></div></div>'
+  +'<form id="workerClockForm" class="worker-pin-form">'
+  +'<input type="hidden" name="username" value="'+escapeHtml(worker.username)+'">'
+  +'<input name="pin" type="hidden" autocomplete="off" value="">'
+  +'<output class="worker-pin-screen" aria-label="Drink PIN digits entered"></output>'
+  +'<div class="worker-pin-pad"></div><p data-clock-error role="alert"></p>'
+  +'<button type="submit" class="clock-pin-submit" '+(busy?'disabled':'')+'>✓</button></form></section>';
+ document.getElementById('changeClockWorker').onclick=()=>{if(!busy){selected='';status.textContent='';render();}};
+ const form=document.getElementById('workerClockForm');
+ form.onsubmit=async event=>{
+  event.preventDefault();if(busy)return;
+  const username=form.elements.username.value,pin=form.elements.pin.value;
+  if(!/^\d{4,10}$/.test(pin)){form.querySelector('[data-clock-error]').textContent='Enter your Drink PIN to continue.';return;}
+  busy=true;form.querySelector('button[type=submit]').disabled=true;
+  try{
+   const result=await KBRCloud.rpc('kbr_login_worker',{p_username:username,p_pin:pin});
+   form.elements.pin.value='';
+   if(result.error)throw Error(result.error);
+   if(!result.profile?.id||!result.profile?.username)throw Error('Worker login was not confirmed.');
+   profile=result.profile;sessionPin=pin;selected='';records=[];signature='';attendanceReady=false;
+   render();await refresh(true);
+   status.textContent=active()?'Logged in. Your existing shift is still running.':'Logged in. Press Clock In to start your shift.';
+  }catch(error){
+   if(profile){status.textContent='Logged in, but attendance could not be loaded: '+error.message;}
+   else{form.querySelector('[data-clock-error]').textContent=error.message;form.elements.pin.value='';form.querySelector('button[type=submit]').disabled=false;}
+  }finally{busy=false;if(profile)render();}
+ };
+ mountWorkerLoginPin(form);
+}
 async function refresh(force=false){if(!profile||refreshing)return;refreshing=true;const workerId=profile.id;try{const rows=await KBRCloud.request('/rest/v1/kbr_worker_attendance?barista_id=eq.'+encodeURIComponent(workerId)+'&select=*&order=clocked_in_at.desc&limit=20');if(profile?.id!==workerId)return;const next=JSON.stringify(rows);records=rows;attendanceReady=true;if(force||signature!==next){signature=next;render();}timer();KBRCloud.status('Connected · attendance saved; refresh on sign-in and clock actions');}catch(error){KBRCloud.status('Attendance connection unavailable',true);throw error;}finally{refreshing=false;}}
 async function changeAttendance(action){if(!profile||busy||!attendanceReady)return;busy=true;render();try{const result=await KBRCloud.rpc('kbr_clock_worker',{p_username:profile.username,p_pin:sessionPin,p_action:action});if(result.error)throw Error(result.error);await refresh(true);status.textContent=action==='in'?'Clocked in. Your time has started.':'Clocked out. Your earned time is shown.';}
 catch(error){status.textContent='Attendance change was not confirmed: '+error.message+' Refresh and review your shift before retrying.';}
