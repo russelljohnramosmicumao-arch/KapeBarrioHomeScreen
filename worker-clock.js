@@ -1,7 +1,7 @@
 function clockAvatar(url,name,cls='clock-profile-photo'){
  const base=KBRCloud.config.url+'/storage/v1/object/public/kbr-employee-photos/';
- const trusted=typeof url==='string'&&url.startsWith(base)&&!/[<>"'\\s]/.test(url);
- const initials=String(name||'?').trim().split(/\\s+/).slice(0,2).map(part=>part[0]||'').join('').toUpperCase();
+ const trusted=typeof url==='string'&&url.startsWith(base)&&!/[<>"'\s]/.test(url);
+ const initials=String(name||'?').trim().split(/\s+/).slice(0,2).map(part=>part[0]||'').join('').toUpperCase();
  return '<span class="'+cls+'">'+(trusted?'<img src="'+escapeHtml(url)+'" alt="Photo of '+escapeHtml(name)+'" loading="lazy" referrerpolicy="no-referrer">':'<span aria-hidden="true">'+escapeHtml(initials)+'</span>')+'</span>';
 }
 function mountWorkerLoginPin(form,workers){
